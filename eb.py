@@ -144,7 +144,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         display_coord_type = display.getCoordinateType()
         print('unit type: ', display_coord_type)
-        # frame_rate = window.getActualFrameRate()
+        frame_rate = window.getActualFrameRate()
         # print('frame rate: ' + str(frame_rate))
 
         # ====================================================================================
@@ -208,8 +208,22 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # Frame-skipping check:
         def frame_skip_check(elapsed_t, elapsed_frames):
             # The number of elapsed frames should match the time:
-            print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames, (elapsed_t / elapsed_frames)))
+            print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames,
+                                                       (elapsed_t / elapsed_frames)))
 
+        # This is done at every frame update, regardless of trial phase, so predefining:
+        def frame_routine():
+            window.flip()
+            fix_cross.draw()
+            # Checking for quit (the Esc key)
+            if event.getKeys(keyList=['escape']):
+                exit_routine()
+            # Measuring time elapsed since the start of the trial:
+            trial_elapsed_t_ = trial_clock.getTime() - trial_t_start
+            return trial_elapsed_t_
+
+        # Also no variation across frames, but only available upon call, which is made only in key
+        # registering phase.
         def exit_routine():
             window.close()
             core.quit()
@@ -260,9 +274,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             t_blink_start = 0  # blink start & end time
             t_blink_end = 0
 
-            # Trial components pertaining to behavioural response:
-            targ_resp_given = False
-            rt_start = trial_clock.getTime()
 
             # ================================================================================
             ## Starting the eye-tracking recording:
@@ -280,53 +291,80 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             trial_t_start = trial_clock.getTime()
             if debug:
                 trial_elapsed_frames = 0  # counting frames for frame skip test
-            while not targ_resp_given:
 
-                window.flip()
-
-                # Measuring time elapsed since the start of the trial:
-                trial_elapsed_t = trial_clock.getTime() - trial_t_start
+            # ================================================================================
+            ## Fixation cross
+            fix_1_frames = int(fix_1_dur*frame_rate)
+            for fix_1_frame in range(fix_1_frames):
+                frame_routine()
                 if debug:
                     trial_elapsed_frames += 1
 
-                # Draw the fixation at all times:
-                fix_cross.draw()
+            # ================================================================================
+            ## The brief period with beep & cue
+            beep_cue_frames = int(beep_dur*frame_rate)
+            for beep_cue_frame in range(beep_cue_frames):
+                frame_routine()
+                beep.play()
+                cue_arrow.draw()
+                if debug:
+                    trial_elapsed_frames += 1
 
-                # Drawing the cue:
-                if cue_period[0] <= trial_elapsed_t <= cue_period[1]:
-                    cue_arrow.draw()
+            # ================================================================================
+            ## The rest of the period without the beep, but with the cue
+            cue_only_frames = int((cue_dur-beep_dur)*frame_rate)
+            for cue_only_frame in range(cue_only_frames):
+                frame_routine()
+                cue_arrow.draw()
+                if debug:
+                    trial_elapsed_frames += 1
 
-                # Playing the sound:
-                if beep_period[0] <= trial_elapsed_t <= beep_period[1]:
-                    beep.play()
+            # ================================================================================
+            ## Fixation 2 + blink period, i.e., the fixation period after the cue
+            blink_time_period_frames = int((fix_2_dur+blink_time_window)*frame_rate)
+            for blink_time_period_frame in range(blink_time_period_frames):
+                frame_routine()
+                if debug:
+                    trial_elapsed_frames += 1
+
+            # ================================================================================
+            ## Behavioural response: measuring the reaction time.
+
+            # Trial components pertaining to behavioural response:
+            targ_resp_given = False
+            rt_start = trial_clock.getTime()
+
+            # Displaying the target and measuring the reaction time.
+            while not targ_resp_given:
+
+                # Measuring the time it takes for the behavioural response:
+                trial_elapsed_t = frame_routine()
+
+                # Drawing the target:
+                targ.draw()
 
                 # Monitoring for key presses:
-                if trial_elapsed_t >= blink_period[1]:
-                    targ.draw()
-                    arrow_keys = event.getKeys(keyList=['left', 'right'])
-                    if len(arrow_keys) > 0:
-                        if 'left' in arrow_keys:
-                            print('response: left')
-                            beh_resp = -1
-                            targ_resp_given = True
-                        elif 'right' in arrow_keys:
-                            print('response: right')
-                            beh_resp = 1
-                            targ_resp_given = True
-                        if targ_resp_given:  # this is overwritten every time any key is pressed
-                            rt = trial_clock.getTime() - rt_start
-                            if beh_resp == this_targ_loc:
-                                corr_resp = 1  # correct location response
-                            else:
-                                corr_resp = 0  # incorrect location response
-                            print('RT=%.1f correct?=%s' % (rt, corr_resp))
-                            if debug:  # in debug mode, check if the frame rate looks okay
-                                frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
-
-
-                # Checking for quit (the Esc key)
-                if event.getKeys(keyList=['escape']):
-                    exit_routine()
+                arrow_keys = event.getKeys(keyList=['left', 'right'])
+                if len(arrow_keys) > 0:
+                    if 'left' in arrow_keys:
+                        print('response: left')
+                        beh_resp = -1
+                        targ_resp_given = True
+                    elif 'right' in arrow_keys:
+                        print('response: right')
+                        beh_resp = 1
+                        targ_resp_given = True
+                    if targ_resp_given:  # this is overwritten every time any key is pressed
+                        rt = trial_clock.getTime() - rt_start
+                        if beh_resp == this_targ_loc:
+                            corr_resp = 1  # correct location response
+                        else:
+                            corr_resp = 0  # incorrect location response
+                        print('RT=%.1f correct?=%s' % (rt, corr_resp))
+                        if debug:  # in debug mode, check if the frame rate looks okay
+                            trial_elapsed_frames = fix_1_frame + beep_cue_frame + cue_only_frame + \
+                                                   blink_time_period_frame
+                            frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
 
 if __name__ == "__main__":
     import os
