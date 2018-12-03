@@ -9,7 +9,7 @@ Original date: 2018-11-15
 
 # todo: test if I need to use iohub for keyboard, or can get away with default psychopy
 
-# from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
+from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, core, data, event, gui, sound, monitors
 # from psychopy.constants import *  # things like STARTED, FINISHED
 from psychopy.iohub import (EventConstants, EyeTrackerConstants, getCurrentDateTimeString,
@@ -233,6 +233,8 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         n_trials_done = 0
         trial_clock = core.Clock()
+        if debug:
+            it_clock = core.Clock()  # inter-trial clock, for measuring unintended delays
 
         for trial in trials:
 
@@ -255,17 +257,19 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             n_trials_done += 1
             print('======TRIAL#' + str(n_trials_done) + '======')
             trial_clock.reset()  # clock
-            frame_n = -1
 
-            # To simplify computation, pre-compute 'on' and 'off'set values for each trial phase,
-            # as these are going to be used on each frame for checks.
-            cue_period = [fix_1_dur, fix_1_dur + cue_dur]
-            beep_period = [cue_period[1], cue_period[1] + .05]  # beep onsets along with the 2nd fixation
-            fix_2_dur = np.random.randint(fix_2_min, fix_2_max) / 1000  # randomizing & converting to sec
-            fix_2_period = [cue_period[1], cue_period[1] + fix_2_dur]
-            blink_period = [fix_2_period[1], fix_2_period[1] + blink_time_window]
+            if debug:
+                if n_trials_done > 1:
+                    print(n_trials_done)
+                    iti_dur = it_clock.getTime() - iti_end_trial
+                    print('inter-trial duration: %.3f' % iti_dur)
 
-            # Randomize target location
+            # Randomize the duration of the post-cue fixation:
+            fix_2_dur = np.random.randint(fix_2_min, fix_2_max)/1000  # randomizing & converting to sec
+            if debug:
+                print('fix2dur = %.3f' % fix_2_dur)
+
+            # Randomize target location:
             this_targ_loc = np.random.randint(0, 1) * 2 - 1
             print('this target location is ' + str(this_targ_loc))
 
@@ -293,7 +297,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 trial_elapsed_frames = 0  # counting frames for frame skip test
 
             # ================================================================================
-            ## Fixation cross
+            ## Fixation cross:
             fix_1_frames = int(fix_1_dur*frame_rate)
             for fix_1_frame in range(fix_1_frames):
                 frame_routine()
@@ -301,7 +305,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             # ================================================================================
-            ## The brief period with beep & cue
+            ## The brief period with beep & cue:
             beep_cue_frames = int(beep_dur*frame_rate)
             for beep_cue_frame in range(beep_cue_frames):
                 frame_routine()
@@ -311,7 +315,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             # ================================================================================
-            ## The rest of the period without the beep, but with the cue
+            ## The rest of the period without the beep, but with the cue:
             cue_only_frames = int((cue_dur-beep_dur)*frame_rate)
             for cue_only_frame in range(cue_only_frames):
                 frame_routine()
@@ -320,7 +324,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             # ================================================================================
-            ## Fixation 2 + blink period, i.e., the fixation period after the cue
+            ## Fixation 2 + blink period, i.e., the fixation period after the cue:
             blink_time_period_frames = int((fix_2_dur+blink_time_window)*frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
                 frame_routine()
@@ -328,7 +332,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             # ================================================================================
-            ## Behavioural response: measuring the reaction time.
+            ## Behavioural response: measuring the reaction time:
 
             # Trial components pertaining to behavioural response:
             targ_resp_given = False
@@ -342,6 +346,9 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
                 # Drawing the target:
                 targ.draw()
+
+                if debug:
+                    trial_elapsed_frames += 1
 
                 # Monitoring for key presses:
                 arrow_keys = event.getKeys(keyList=['left', 'right'])
@@ -360,11 +367,10 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             corr_resp = 1  # correct location response
                         else:
                             corr_resp = 0  # incorrect location response
-                        print('RT=%.1f correct?=%s' % (rt, corr_resp))
+                        print('RT=%.2f correct?=%s' % (rt, corr_resp))
                         if debug:  # in debug mode, check if the frame rate looks okay
-                            trial_elapsed_frames = fix_1_frame + beep_cue_frame + cue_only_frame + \
-                                                   blink_time_period_frame
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
+                            iti_end_trial = it_clock.getTime()
 
 if __name__ == "__main__":
     import os
