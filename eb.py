@@ -173,7 +173,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                                      lineColor='black', pos=(0, cue_off_y))
 
         # target:
-        targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(50, 0), fillColor='white')
+        targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
 
         # target response:
         key_arrow = event.BuilderKeyResponse()
@@ -260,7 +260,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             if debug:
                 if n_trials_done > 1:
-                    print(n_trials_done)
                     iti_dur = it_clock.getTime() - iti_end_trial
                     print('inter-trial duration: %.3f' % iti_dur)
 
@@ -270,8 +269,9 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 print('fix2dur = %.3f' % fix_2_dur)
 
             # Randomize target location:
-            this_targ_loc = np.random.randint(0, 1) * 2 - 1
+            this_targ_loc = np.random.randint(2) * 2 - 1
             print('this target location is ' + str(this_targ_loc))
+            targ.pos = (targ_off_x * this_targ_loc, 0)
 
             # Trial components pertaining to eye blinks:
             blinked = False  # blink detection
