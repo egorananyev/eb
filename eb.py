@@ -36,7 +36,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
     def run(self, *args):
 
-        # ====================================================================================
         ## Initial variables.
         # experiment variables:
         exp_name = 'eb1'
@@ -70,24 +69,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         targ_off_x = 3
         targ_diam = .5
 
-        # ====================================================================================
-        ## Conversion functions:
-
-        def cm2px(cm, dr_=dr, dd_=dd):
-            px = int(cm * (dr_[0] / dd_[0]))
-            return px
-
-        def dg2cm(dg, ds_=ds):
-            cm = ds_ * np.tan(np.radians(dg))
-            return cm
-
-        def dg2px(dg, cm2px_=cm2px, dg2cm_=dg2cm):
-            px = int(cm2px_(dg2cm_(dg)))
-            return px
-
-        # Converting stimulus dimensions to pixels
-
-        # ====================================================================================
         ## getting user info about the experiment session:
         exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'd', u'sess': u''}
         # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
@@ -100,7 +81,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             trial_n = 1
         end_exp_now = False  # flag for 'escape' or other condition => quit the exp
 
-        # ====================================================================================
         ## Input and output
 
         # condition file:
@@ -119,14 +99,12 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         out_file_path = '..' + os.sep + 'data' + os.sep + out_file_name
         print('output file path is ' + out_file_path)
 
-        # ====================================================================================
         ## Handy shortcuts:
         tracker = self.hub.devices.tracker
         display = self.hub.devices.display
         kb = self.hub.devices.keyboard
         mouse = self.hub.devices.mouse
 
-        # ====================================================================================
         ## EyeLink & screen setup
 
         # - Start by running the eye tracker default setup procedure.
@@ -154,9 +132,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             if frame_rate < 100:
                 print('WARNING! The measured frame rate is lower than expected')
 
-        # ====================================================================================
         ## Initialize the stimuli and instructions
-
         instruction_text = "press space key to start the experiment"
         # instructions_text_stim = visual.TextStim(window, text=instruction_text, pos=[0, 0], height=24,
         #                                          color=[-1, -1, -1], colorSpace='rgb', alignHoriz='center',
@@ -182,7 +158,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # target response:
         key_arrow = event.BuilderKeyResponse()
 
-        # ====================================================================================
         ## Initiating the iohub routines
 
         # wait until a key event occurs after the instructions are displayed
@@ -206,7 +181,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         self.hub.clearEvents('all')
         print('initiated the iohub routines')
 
-        # ====================================================================================
         ## Handy routines:
 
         # Frame-skipping check:
@@ -232,8 +206,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             window.close()
             core.quit()
 
-        # ====================================================================================
-        # initiating the trial loop
+        ## Initiating the trial loop
 
         n_trials_done = 0
         trial_clock = core.Clock()
@@ -242,9 +215,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         for trial in trials:
 
-            # ================================================================================
-            ## First trial initiates instructions and sends the expt initiation message to the
-            # eye tracker:
+            ## First trial initiates instructions and sends the expt initiation message to the eye tracker:
             if n_trials_done == 0:
                 # - Update the instruction screen text...
                 instructions_text_stim.setText(instruction_text)
@@ -254,7 +225,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 # wait until a space key event occurs after the instructions are displayed
                 kb.waitForPresses(keys=' ')
 
-            # ================================================================================
             ## Trial components:
 
             # Trial components pertaining to time, frames, and trial number:
@@ -292,29 +262,30 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             else:
                 print('invalid cue')
 
+            ## Starting the eye-tracking recording.
+
             # Trial components pertaining to eye blinks:
             blinked = False  # blink detection
             t_blink_start = 0  # blink start & end time
             t_blink_end = 0
 
-            # ================================================================================
-            ## Starting the eye-tracking recording:
+            # Recording trial characteristics in the trial output:
             flip_time = window.flip()
             trial['session_id'] = self.hub.getSessionID()
             trial['trial_id'] = n_trials_done
-            trial['TRIAL_START'] = flip_time
+            trial['trial_start'] = flip_time
+
+            # Starting the recording:
             self.hub.sendMessageEvent(text="TRIAL_START", sec_time=flip_time)
             self.hub.clearEvents('all')
             if not debug:
                 tracker.setRecordingState(True)
 
-            # ================================================================================
-            ## Starting the frame cycle & waiting for the response:
+            ## Starting the frame cycle & waiting for the response.
             trial_t_start = trial_clock.getTime()
             if debug:
                 trial_elapsed_frames = 0  # counting frames for frame skip test
 
-            # ================================================================================
             ## Fixation cross:
             fix_1_frames = int(fix_1_dur*frame_rate)
             for fix_1_frame in range(fix_1_frames):
@@ -323,7 +294,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            # ================================================================================
             ## The rest of the period without the beep, but with the cue:
             cue_frames = int(cue_dur*frame_rate)
             for cue_frame in range(cue_frames):
@@ -333,7 +303,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            # ================================================================================
             ## The brief period with the beep:
             beep_frames = int(beep_dur*frame_rate)
             for beep_frame in range(beep_frames):
@@ -343,7 +312,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            # ================================================================================
             ## Fixation 2 + blink period, i.e., the fixation period after the beep:
             blink_time_period_frames = int((fix_2_dur+blink_time_window)*frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
@@ -352,7 +320,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            # ================================================================================
             ## Behavioural response: measuring the reaction time:
 
             # Trial components pertaining to behavioural response:
@@ -372,7 +339,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-                # Monitoring for key presses:
+                ## Monitoring for key presses:
                 arrow_keys = event.getKeys(keyList=['left', 'right'])
                 if len(arrow_keys) > 0:
                     if 'left' in arrow_keys:
@@ -395,6 +362,10 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = it_clock.getTime()
 
+                ## Recording the response in the HDF5 format:
+                trial['corr_resp'] = corr_resp
+                trial['rt'] = rt
+
 
 if __name__ == "__main__":
     import os
@@ -403,15 +374,14 @@ if __name__ == "__main__":
     def main(base_dir):
         # -- Sol's comments:
         """
-        Creates an instance of the ExperimentRuntime class, gets the eye tracker
-        the user wants to use for the demo, and launches the experiment logic.
+        Creates an instance of the ExperimentRuntime class, gets the eye tracker the user wants to use for the demo, and
+        launches the experiment logic.
         """
-        # The following code merges a iohub_config file called iohub_config.yaml.part,
-        # that has all the iohub_config settings, other than those for the eye tracker, with
-        # the eye tracker configs in the yaml files in the eyetracker_configs dir. {...}
+        # The following code merges a iohub_config file called iohub_config.yaml.part, that has all the iohub_config
+        # settings, other than those for the eye tracker, with the eye tracker configs in the yaml files in the
+        # eyetracker_configs dir. {...}
         #
-        # The merged result is saved as iohub_config.yaml so it can be picked up
-        # by the Experiment _runtime as normal.
+        # The merged result is saved as iohub_config.yaml so it can be picked up by the Experiment _runtime as normal.
         # --
 
         ##
