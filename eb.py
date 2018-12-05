@@ -40,13 +40,12 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # experiment variables:
         exp_name = 'eb1'
         trial_n = 15  # trials per row; 15 gives 300 trials
-        debug = True  # are we using the eye tracker in the session? must be False for expt
-        # general timing variables:
+        debug = True  # are we using the eye tracker in the session? must be False for expt general timing variables:
         fix_1_dur = .4  # the time frame before the cue, if any
         fix_2_min = 240 # these are in ms, because we need a random _integer_ in this range
         fix_2_max = 500
-        # the time window for the blink - quite conservative - should include the whole blink,
-        # but is independent of the blink start/end
+        # the time window for the blink - quite conservative - should include the whole blink, but is independent of
+        # the blink start/end
         blink_time_window = .3
         post_blink_dur = .05
         # display dimensions:
@@ -84,8 +83,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         ## Input and output
 
         # condition file:
-        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' +
-                                          exp_info['cond'] + '.xlsx')
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
         trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
         # - Inform the ioDataStore that the experiment is using a TrialHandler. The ioDataStore will
@@ -118,9 +116,8 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         else:
             # - Create a psychopy window, full screen resolution, full screen mode...
             res = display.getPixelResolution()
-            window = visual.Window(res, monitor='Screen1', units=display.getCoordinateType(),
-                                   fullscr=True, allowGUI=False, waitBlanking=False,
-                                   screen=display.getIndex())
+            window = visual.Window(res, monitor='Screen1', units=display.getCoordinateType(), fullscr=True,
+                                   allowGUI=False, waitBlanking=False, screen=display.getIndex())
 
         # display_coord_type = display.getCoordinateType()
         # print('unit type: ', display_coord_type)
@@ -149,8 +146,8 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         # cue:
         arrow_vert = [(.5, 0), (0, .3), (0, .1), (-.5, .1), (-.5, -.1), (0, -.1), (0, -.3)]
-        cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=.3,
-                                     lineColor='black', pos=(0, cue_off_y))
+        cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=.3, lineColor='black',
+                                     pos=(0, cue_off_y))
 
         # target:
         targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
@@ -186,8 +183,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # Frame-skipping check:
         def frame_skip_check(elapsed_t, elapsed_frames):
             # The number of elapsed frames should match the time:
-            print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames,
-                                                       (elapsed_t / elapsed_frames)))
+            print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames, (elapsed_t / elapsed_frames)))
 
         # This is done at every frame update, regardless of trial phase, so predefining:
         def frame_routine(trial_t_start_):
@@ -200,8 +196,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             trial_elapsed_t_ = trial_clock.getTime() - trial_t_start_
             return trial_elapsed_t_
 
-        # Also no variation across frames, but only available upon call, which is made only in key
-        # registering phase.
+        # Also no variation across frames, but only available upon call, which is made only in key registering phase.
         def exit_routine():
             window.close()
             core.quit()
@@ -385,19 +380,17 @@ if __name__ == "__main__":
         # --
 
         ##
-        # I revamped the code so that all iohub config files are stored in the 'iohub_configs'
-        # subdirectory. All the .yaml files should be stored there.
+        # I revamped the code so that all iohub config files are stored in the 'iohub_configs' subdirectory. All the
+        # .yaml files should be stored there.
         #
-        # Also, since a single eye-tracker is used, I removed all references to other
-        # eye trackers beside the EyeLink and removed the gui prompt asking for the type of eye
-        # tracker.
+        # Also, since a single eye-tracker is used, I removed all references to other eye trackers beside the EyeLink
+        # and removed the gui prompt asking for the type of eye tracker.
 
         eye_config_dir = os.path.normcase(os.path.join(base_dir, 'iohub_configs'))
         base_config_file = os.path.normcase(os.path.join(eye_config_dir, 'iohub_config.yaml.part'))
         eyetracker_config_file = os.path.normcase(os.path.join(eye_config_dir, 'eyelink_config.yaml'))
         combined_config_file_name = os.path.normcase(os.path.join(eye_config_dir, 'iohub_config.yaml'))
-        ExperimentRuntime.mergeConfigurationFiles(base_config_file, eyetracker_config_file,
-                                                  combined_config_file_name)
+        ExperimentRuntime.mergeConfigurationFiles(base_config_file, eyetracker_config_file, combined_config_file_name)
         runtime = ExperimentRuntime(eye_config_dir, 'experiment_config.yaml')
         runtime.start(('SR Research EyeLink',))
 
