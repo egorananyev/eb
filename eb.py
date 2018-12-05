@@ -40,6 +40,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         ## Initial variables.
         # experiment variables:
         exp_name = 'eb1'
+        trial_n = 15  # trials per row; 15 gives 300 trials
         debug = True  # are we using the eye tracker in the session? must be False for expt
         # general timing variables:
         fix_1_dur = .4  # the time frame before the cue, if any
@@ -66,7 +67,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         cue_valid = .7  # validity of the cue
         beep_dur = .05
         # target:
-        targ_off_x = 3.5
+        targ_off_x = 3
         targ_diam = .5
 
         # ====================================================================================
@@ -86,16 +87,17 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         # Converting stimulus dimensions to pixels
 
-
         # ====================================================================================
         ## getting user info about the experiment session:
-        exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'c', u'sess': u''}
-        # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink
+        exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'd', u'sess': u''}
+        # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
         exp_name = exp_info['expt']
         dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
         if not dlg.OK:
             core.quit()  # user pressed cancel
         exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
+        if exp_info['cond'] == 'd':
+            trial_n = 1
         end_exp_now = False  # flag for 'escape' or other condition => quit the exp
 
         # ====================================================================================
@@ -104,7 +106,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # condition file:
         exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' +
                                           exp_info['cond'] + '.xlsx')
-        trials = TrialHandler(exp_conditions, 1)
+        trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
         # - Inform the ioDataStore that the experiment is using a TrialHandler. The ioDataStore will
         # create a table which can be used to record the actual trial variable values (DV or IV)
@@ -134,7 +136,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         if debug:
             mon = monitors.Monitor('Dell', width=dd[0], distance=ds)
-            window = visual.Window(size=dr, monitor=mon, fullscr=True, screen=1, units='deg')
+            window = visual.Window(size=dr, monitor=mon, fullscr=False, screen=1, units='deg')
         else:
             # - Create a psychopy window, full screen resolution, full screen mode...
             res = display.getPixelResolution()
@@ -142,10 +144,15 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                                    fullscr=True, allowGUI=False, waitBlanking=False,
                                    screen=display.getIndex())
 
-        display_coord_type = display.getCoordinateType()
-        print('unit type: ', display_coord_type)
-        frame_rate = window.getActualFrameRate()
-        # print('frame rate: ' + str(frame_rate))
+        # display_coord_type = display.getCoordinateType()
+        # print('unit type: ', display_coord_type)
+        if debug:
+            frame_rate = 60
+        else:
+            frame_rate = window.getActualFrameRate()
+            print('frame rate: ' + str(frame_rate))
+            if frame_rate < 100:
+                print('WARNING! The measured frame rate is lower than expected')
 
         # ====================================================================================
         ## Initialize the stimuli and instructions
@@ -155,9 +162,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         #                                          color=[-1, -1, -1], colorSpace='rgb', alignHoriz='center',
         #                                          alignVert='center', wrapWidth=window.size[0] * .9)
         instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.4)
-        # fix_cross = visual.shapestim(window, vertices=((0, -fix_cross_sz), (0, fix_cross_sz), (0, 0),
-        #                                             (-fix_cross_sz, 0), (fix_cross_sz, 0)),
-        #                              linewidth=2, closeshape=False, linecolor='white')
         # todo: potentially adjust the 'height' for better cross size
         fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=.3)
 
@@ -212,14 +216,14 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                                                        (elapsed_t / elapsed_frames)))
 
         # This is done at every frame update, regardless of trial phase, so predefining:
-        def frame_routine():
+        def frame_routine(trial_t_start_):
             window.flip()
             fix_cross.draw()
             # Checking for quit (the Esc key)
             if event.getKeys(keyList=['escape']):
                 exit_routine()
             # Measuring time elapsed since the start of the trial:
-            trial_elapsed_t_ = trial_clock.getTime() - trial_t_start
+            trial_elapsed_t_ = trial_clock.getTime() - trial_t_start_
             return trial_elapsed_t_
 
         # Also no variation across frames, but only available upon call, which is made only in key
@@ -260,24 +264,38 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             if debug:
                 if n_trials_done > 1:
+                    # noinspection PyUnboundLocalVariable
                     iti_dur = it_clock.getTime() - iti_end_trial
                     print('inter-trial duration: %.3f' % iti_dur)
 
-            # Randomize the duration of the post-cue fixation:
-            fix_2_dur = np.random.randint(fix_2_min, fix_2_max)/1000  # randomizing & converting to sec
+            # Randomize the duration of the post-cue fixation & converting to sec:
+            fix_2_dur = np.random.randint(fix_2_min, fix_2_max+1)/1000  # max value has to be one up
             if debug:
                 print('fix2dur = %.3f' % fix_2_dur)
 
-            # Randomize target location:
-            this_targ_loc = np.random.randint(2) * 2 - 1
+            # Target location:
+            # this_targ_loc = np.random.randint(2) * 2 - 1
+            this_targ_loc = trial['targ_right'] * 2 - 1
             print('this target location is ' + str(this_targ_loc))
             targ.pos = (targ_off_x * this_targ_loc, 0)
+
+            # Cue validity:
+            cue_dir = (trial['cue_valid'] * 2 - 1) * this_targ_loc
+            # Logic: First, the cue validity is converted from binary [0, 1] to [-1, 1].
+            # It is then multiplied by the target location, which is either left [-1] or right [1].
+            # E.g., if the cue is valid for a target that appears on the right, cue direction is 1*1, rightward.
+            # If the cue is invalid for such a target, cue direction is -1*1, leftward.
+            cue_arrow.ori = 90 * (cue_dir - 1)
+            # Logic: If cue_dir == 1, 90 * 0 = 0, rightward orientation. If cue_dir == -1, 90 * (-2) = -180, leftward.
+            if trial['cue_valid']:
+                print('valid cue')
+            else:
+                print('invalid cue')
 
             # Trial components pertaining to eye blinks:
             blinked = False  # blink detection
             t_blink_start = 0  # blink start & end time
             t_blink_end = 0
-
 
             # ================================================================================
             ## Starting the eye-tracking recording:
@@ -300,35 +318,38 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             ## Fixation cross:
             fix_1_frames = int(fix_1_dur*frame_rate)
             for fix_1_frame in range(fix_1_frames):
-                frame_routine()
+                frame_routine(trial_t_start)
                 if debug:
-                    trial_elapsed_frames += 1
-
-            # ================================================================================
-            ## The brief period with beep & cue:
-            beep_cue_frames = int(beep_dur*frame_rate)
-            for beep_cue_frame in range(beep_cue_frames):
-                frame_routine()
-                beep.play()
-                cue_arrow.draw()
-                if debug:
+                    # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
             # ================================================================================
             ## The rest of the period without the beep, but with the cue:
-            cue_only_frames = int((cue_dur-beep_dur)*frame_rate)
-            for cue_only_frame in range(cue_only_frames):
-                frame_routine()
+            cue_frames = int(cue_dur*frame_rate)
+            for cue_frame in range(cue_frames):
+                frame_routine(trial_t_start)
                 cue_arrow.draw()
                 if debug:
+                    # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
             # ================================================================================
-            ## Fixation 2 + blink period, i.e., the fixation period after the cue:
+            ## The brief period with the beep:
+            beep_frames = int(beep_dur*frame_rate)
+            for beep_frame in range(beep_frames):
+                frame_routine(trial_t_start)
+                beep.play()
+                if debug:
+                    # noinspection PyUnboundLocalVariable
+                    trial_elapsed_frames += 1
+
+            # ================================================================================
+            ## Fixation 2 + blink period, i.e., the fixation period after the beep:
             blink_time_period_frames = int((fix_2_dur+blink_time_window)*frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
-                frame_routine()
+                frame_routine(trial_t_start)
                 if debug:
+                    # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
             # ================================================================================
@@ -342,12 +363,13 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             while not targ_resp_given:
 
                 # Measuring the time it takes for the behavioural response:
-                trial_elapsed_t = frame_routine()
+                trial_elapsed_t = frame_routine(trial_t_start)
 
                 # Drawing the target:
                 targ.draw()
 
                 if debug:
+                    # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
                 # Monitoring for key presses:
@@ -357,7 +379,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                         print('response: left')
                         beh_resp = -1
                         targ_resp_given = True
-                    elif 'right' in arrow_keys:
+                    else:
                         print('response: right')
                         beh_resp = 1
                         targ_resp_given = True
@@ -369,8 +391,10 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             corr_resp = 0  # incorrect location response
                         print('RT=%.2f correct?=%s' % (rt, corr_resp))
                         if debug:  # in debug mode, check if the frame rate looks okay
+                            # noinspection PyUnboundLocalVariable
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = it_clock.getTime()
+
 
 if __name__ == "__main__":
     import os
