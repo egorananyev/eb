@@ -89,6 +89,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # - Inform the ioDataStore that the experiment is using a TrialHandler. The ioDataStore will
         # create a table which can be used to record the actual trial variable values (DV or IV)
         # in the order run / collected:
+        print(trials)
         self.hub.createTrialHandlerRecordTable(trials)
 
         # output file:
@@ -164,8 +165,8 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # including the eye tracker being used for this session.
         self.hub.sendMessageEvent(text="IO_HUB EXPERIMENT_INFO START")
         self.hub.sendMessageEvent(text="ioHub Experiment started {0}".format(getCurrentDateTimeString()))
-        self.hub.sendMessageEvent(
-            text="Experiment ID: {0}, Session ID: {1}".format(self.hub.experimentID, self.hub.experimentSessionID))
+        self.hub.sendMessageEvent(text="Experiment ID: {0}, Session ID: {1}".format(self.hub.experimentID,
+                                                                                    self.hub.experimentSessionID))
         self.hub.sendMessageEvent(
             text="Stimulus Screen ID: {0}, Size (pixels): {1}, CoordType: {2}".format(display.getIndex(),
                                                                                       display.getPixelResolution(),
@@ -186,15 +187,13 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames, (elapsed_t / elapsed_frames)))
 
         # This is done at every frame update, regardless of trial phase, so predefining:
-        def frame_routine(trial_t_start_):
-            window.flip()
+        def frame_routine():
+            flip_time_ = window.flip()
             fix_cross.draw()
             # Checking for quit (the Esc key)
             if event.getKeys(keyList=['escape']):
                 exit_routine()
-            # Measuring time elapsed since the start of the trial:
-            trial_elapsed_t_ = trial_clock.getTime() - trial_t_start_
-            return trial_elapsed_t_
+            return flip_time_
 
         # Also no variation across frames, but only available upon call, which is made only in key registering phase.
         def exit_routine():
@@ -241,7 +240,10 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             # Target location:
             # this_targ_loc = np.random.randint(2) * 2 - 1
             this_targ_loc = trial['targ_right'] * 2 - 1
-            print('this target location is ' + str(this_targ_loc))
+            if this_targ_loc > 0:
+                print('target location: Right')
+            else:
+                print('target location: Left')
             targ.pos = (targ_off_x * this_targ_loc, 0)
 
             # Cue validity:
@@ -268,7 +270,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             flip_time = window.flip()
             trial['session_id'] = self.hub.getSessionID()
             trial['trial_id'] = n_trials_done
-            trial['trial_start'] = flip_time
+            trial['TRIAL_START'] = flip_time
 
             # Starting the recording:
             self.hub.sendMessageEvent(text="TRIAL_START", sec_time=flip_time)
@@ -284,7 +286,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             ## Fixation cross:
             fix_1_frames = int(fix_1_dur*frame_rate)
             for fix_1_frame in range(fix_1_frames):
-                frame_routine(trial_t_start)
+                frame_routine()
                 if debug:
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
@@ -292,7 +294,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             ## The rest of the period without the beep, but with the cue:
             cue_frames = int(cue_dur*frame_rate)
             for cue_frame in range(cue_frames):
-                frame_routine(trial_t_start)
+                frame_routine()
                 cue_arrow.draw()
                 if debug:
                     # noinspection PyUnboundLocalVariable
@@ -301,7 +303,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             ## The brief period with the beep:
             beep_frames = int(beep_dur*frame_rate)
             for beep_frame in range(beep_frames):
-                frame_routine(trial_t_start)
+                frame_routine()
                 beep.play()
                 if debug:
                     # noinspection PyUnboundLocalVariable
@@ -310,7 +312,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             ## Fixation 2 + blink period, i.e., the fixation period after the beep:
             blink_time_period_frames = int((fix_2_dur+blink_time_window)*frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
-                frame_routine(trial_t_start)
+                frame_routine()
                 if debug:
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
@@ -325,7 +327,10 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             while not targ_resp_given:
 
                 # Measuring the time it takes for the behavioural response:
-                trial_elapsed_t = frame_routine(trial_t_start)
+                flip_time = frame_routine()
+
+                # Measuring time elapsed since the start of the trial:
+                trial_elapsed_t = trial_clock.getTime() - trial_t_start
 
                 # Drawing the target:
                 targ.draw()
@@ -338,11 +343,11 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 arrow_keys = event.getKeys(keyList=['left', 'right'])
                 if len(arrow_keys) > 0:
                     if 'left' in arrow_keys:
-                        print('response: left')
+                        print('subject response: Left')
                         beh_resp = -1
                         targ_resp_given = True
                     else:
-                        print('response: right')
+                        print('subject response: Right')
                         beh_resp = 1
                         targ_resp_given = True
                     if targ_resp_given:  # this is overwritten every time any key is pressed
@@ -357,9 +362,14 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = it_clock.getTime()
 
-                ## Recording the response in the HDF5 format:
-                trial['corr_resp'] = corr_resp
-                trial['rt'] = rt
+            ## Recording the response in the HDF5 format:
+            trial['corr_resp'] = corr_resp
+            trial['rt'] = rt
+            trial['TRIAL_END'] = trial_clock.getTime()
+            self.hub.sendMessageEvent(text="TRIAL_END %d"%n_trials_done, sec_time=flip_time)
+            print(trial)
+            self.hub.addRowToConditionVariableTable(trial.values())
+            self.hub.clearEvents('all')
 
 
 if __name__ == "__main__":
