@@ -16,7 +16,7 @@ from psychopy.iohub import (EventConstants, EyeTrackerConstants, getCurrentDateT
                             ioHubExperimentRuntime)
 import numpy as np
 from psychopy.data import TrialHandler, importConditions
-# import pandas as pd
+import pandas as pd
 from datetime import datetime
 # import shutil
 # import copy
@@ -86,17 +86,12 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
         trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
-        # - Inform the ioDataStore that the experiment is using a TrialHandler. The ioDataStore will
-        # create a table which can be used to record the actual trial variable values (DV or IV)
-        # in the order run / collected:
         print(trials)
-        self.hub.createTrialHandlerRecordTable(trials)
 
         # output file:
         out_file_name = '%s_subj-%s_cond-%s_sess-%s_%s' % (exp_name, exp_info['subj'], exp_info['cond'],
                                                            exp_info['sess'], exp_info['time'])
         out_file_path = '..' + os.sep + 'data' + os.sep + out_file_name
-        print('output file path is ' + out_file_path)
 
         ## Handy shortcuts:
         tracker = self.hub.devices.tracker
@@ -268,9 +263,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             # Recording trial characteristics in the trial output:
             flip_time = window.flip()
-            trial['session_id'] = self.hub.getSessionID()
-            trial['trial_id'] = n_trials_done
-            trial['TRIAL_START'] = flip_time
 
             # Starting the recording:
             self.hub.sendMessageEvent(text="TRIAL_START", sec_time=flip_time)
@@ -362,15 +354,31 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = it_clock.getTime()
 
-            ## Recording the response in the HDF5 format:
-            trial['corr_resp'] = corr_resp
-            trial['rt'] = rt
-            trial['TRIAL_END'] = trial_clock.getTime()
+            ## Recording the data in the data set:
+            output_row = pd.DataFrame({'exp_name': exp_name,
+                                       'subj': exp_info['subj'],
+                                       'cond': exp_info['cond'],
+                                       'sess': exp_info['sess'],
+                                       'sess_id': self.hub.getSessionID(),
+                                       'trial_id': n_trials_done,
+                                       'trial_start': trial_t_start,
+                                       'trial_end': trial_clock.getTime(),
+                                       'corr_resp': corr_resp,
+                                       'rt': [rt]})
+            if n_trials_done == 1:
+                data_columns = ['exp_name', 'subj', 'cond', 'sess', 'sess_id', 'trial_id', 'trial_start', 'trial_end',
+                                'corr_resp', 'rt']
+                output_mat = output_row
+            else:
+                output_mat = pd.concat([output_mat, output_row])
+
+            # Passing messages to the eye tracker before trial termination:
             self.hub.sendMessageEvent(text="TRIAL_END %d"%n_trials_done, sec_time=flip_time)
-            print(trial)
-            self.hub.addRowToConditionVariableTable(trial.values())
             self.hub.clearEvents('all')
 
+        ## Data output:
+        output_mat.to_csv(out_file_path + '.csv', index=False, columns=data_columns)
+        print('output file path is ' + out_file_path)
 
 if __name__ == "__main__":
     import os
