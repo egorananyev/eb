@@ -42,7 +42,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         trial_n = 15  # trials per row; 15 gives 300 trials
         debug = True  # are we using the eye tracker in the session? must be False for expt general timing variables:
         fix_1_dur = .4  # the time frame before the cue, if any
-        blink_latency_min = 240 # these are in ms, because we need a random _integer_ in this range
+        blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
         blink_latency_max = 500
         # the time window for the blink - quite conservative - should include the whole blink, but is independent of
         # the blink start/end
@@ -194,29 +194,13 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             core.quit()
 
         ## Recording the data in the data set:
-        output_mat = pd.DataFrame()
-        output_row = pd.DataFrame({'exp_name': exp_name,
-                                   'subj': exp_info['subj'],
-                                   'cond': exp_info['cond'],
-                                   'sess': exp_info['sess'],
-                                   'sess_id': self.hub.getSessionID(),
-                                   'trial_id': -1,
-                                   'targ_right': -1,
-                                   'cue_valid': -1,
-                                   'blink_latency': -.1,
-                                   'trial_start': -.1,
-                                   'trial_end': -.1,
-                                   'corr_resp': -1,
-                                   'rt': [-.1]})
+        output_mat = {}
         data_columns = ['exp_name', 'subj', 'cond', 'sess', 'sess_id', 'trial_id', 'targ_right', 'cue_valid',
                         'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
 
         ## Initiating the trial loop
 
         n_trials_done = 0
-        trial_clock = core.Clock()
-        if debug:
-            it_clock = core.Clock()  # inter-trial clock, for measuring unintended delays
 
         for trial in trials:
 
@@ -235,25 +219,22 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             # Trial components pertaining to time, frames, and trial number:
             n_trials_done += 1
             print('======TRIAL#' + str(n_trials_done) + '======')
-            output_row['trial_id'] = n_trials_done
-            trial_clock.reset()  # clock
 
             if debug:
                 if n_trials_done > 1:
                     # noinspection PyUnboundLocalVariable
-                    iti_dur = it_clock.getTime() - iti_end_trial
+                    iti_dur = flip_time - iti_end_trial
                     print('inter-trial duration: %.3f' % iti_dur)
 
             # Randomize the duration of the post-cue fixation & converting to sec:
-            blink_latency = np.random.randint(blink_latency_min, blink_latency_max+1)/1000  # max value has to be one up
-            output_row['blink_latency'] = blink_latency
+            blink_latency = np.random.randint(blink_latency_min,
+                                              blink_latency_max + 1) / 1000  # max value has to be one up
             if debug:
                 print('blink_latency = %.3f' % blink_latency)
 
             # Target location:
             # this_targ_loc = np.random.randint(2) * 2 - 1
             this_targ_loc = trial['targ_right'] * 2 - 1
-            output_row['targ_right'] = trial['targ_right']
             if this_targ_loc > 0:
                 print('target location: Right')
             else:
@@ -262,7 +243,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             # Cue validity:
             cue_dir = (trial['cue_valid'] * 2 - 1) * this_targ_loc
-            output_row['cue_valid'] = trial['cue_valid']
             # Logic: First, the cue validity is converted from binary [0, 1] to [-1, 1].
             # It is then multiplied by the target location, which is either left [-1] or right [1].
             # E.g., if the cue is valid for a target that appears on the right, cue direction is 1*1, rightward.
@@ -283,7 +263,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             # Recording trial characteristics in the trial output:
             flip_time = window.flip()
-            output_row['trial_start'] = flip_time
 
             # Starting the recording:
             self.hub.sendMessageEvent(text="TRIAL_START", sec_time=flip_time)
@@ -292,12 +271,12 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 tracker.setRecordingState(True)
 
             ## Starting the frame cycle & waiting for the response.
-            trial_t_start = trial_clock.getTime()
+            trial_t_start = flip_time
             if debug:
                 trial_elapsed_frames = 0  # counting frames for frame skip test
 
             ## Fixation cross:
-            fix_1_frames = int(fix_1_dur*frame_rate)
+            fix_1_frames = int(fix_1_dur * frame_rate)
             for fix_1_frame in range(fix_1_frames):
                 frame_routine()
                 if debug:
@@ -305,7 +284,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             ## The rest of the period without the beep, but with the cue:
-            cue_frames = int(cue_dur*frame_rate)
+            cue_frames = int(cue_dur * frame_rate)
             for cue_frame in range(cue_frames):
                 frame_routine()
                 cue_arrow.draw()
@@ -314,7 +293,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             ## The brief period with the beep:
-            beep_frames = int(beep_dur*frame_rate)
+            beep_frames = int(beep_dur * frame_rate)
             for beep_frame in range(beep_frames):
                 frame_routine()
                 beep.play()
@@ -323,9 +302,9 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     trial_elapsed_frames += 1
 
             ## Fixation 2 + blink period, i.e., the fixation period after the beep:
-            blink_time_period_frames = int((blink_latency+blink_time_window)*frame_rate)
+            blink_time_period_frames = int((blink_latency + blink_time_window) * frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
-                frame_routine()
+                flip_time = frame_routine()
                 if debug:
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
@@ -334,7 +313,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             # Trial components pertaining to behavioural response:
             targ_resp_given = False
-            rt_start = trial_clock.getTime()
+            rt_start = flip_time
 
             # Displaying the target and measuring the reaction time.
             while not targ_resp_given:
@@ -343,7 +322,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 flip_time = frame_routine()
 
                 # Measuring time elapsed since the start of the trial:
-                trial_elapsed_t = trial_clock.getTime() - trial_t_start
+                trial_elapsed_t = flip_time - trial_t_start
 
                 # Drawing the target:
                 targ.draw()
@@ -364,7 +343,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                         beh_resp = 1
                         targ_resp_given = True
                     if targ_resp_given:  # this is overwritten every time any key is pressed
-                        rt = trial_clock.getTime() - rt_start
+                        rt = flip_time - rt_start
                         if beh_resp == this_targ_loc:
                             corr_resp = 1  # correct location response
                         else:
@@ -373,26 +352,38 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                         if debug:  # in debug mode, check if the frame rate looks okay
                             # noinspection PyUnboundLocalVariable
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
-                            iti_end_trial = it_clock.getTime()
+                            iti_end_trial = flip_time
 
             ## Recording the data
-            output_row['trial_end'] = flip_time
-            output_row['corr_resp'] = corr_resp
-            output_row['rt'] = rt
-            output_mat = output_mat.append(output_row)
+            output_mat[n_trials_done - 1] = {'exp_name': exp_name,
+                                             'subj': exp_info['subj'],
+                                             'cond': exp_info['cond'],
+                                             'sess': exp_info['sess'],
+                                             'sess_id': self.hub.getSessionID(),
+                                             'trial_id': n_trials_done,
+                                             'targ_right': trial['targ_right'],
+                                             'cue_valid': trial['cue_valid'],
+                                             'blink_latency': blink_latency,
+                                             'trial_start': trial_t_start,
+                                             'trial_end': flip_time,
+                                             'corr_resp': corr_resp,
+                                             'rt': rt}
 
             # Passing messages to the eye tracker before trial termination:
-            self.hub.sendMessageEvent(text="TRIAL_END %d"%n_trials_done, sec_time=flip_time)
+            self.hub.sendMessageEvent(text="TRIAL_END %d" % n_trials_done, sec_time=flip_time)
             self.hub.clearEvents('all')
 
         ## Data output:
-        output_mat.to_csv(out_file_path + '.csv', index=False, columns=data_columns)
+        pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path + '.csv', index=False,
+                                                                  columns=data_columns)
+        # .to_csv(out_file_path + '.csv', index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
 
 
 if __name__ == "__main__":
     import os
     from psychopy.iohub import module_directory
+
 
     def main(base_dir):
         # -- Sol's comments:
