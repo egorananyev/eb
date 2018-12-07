@@ -1,0 +1,31 @@
+---
+title: "Eye Blink Analysis"
+author: "Egor Ananyev"
+date: "December 5, 2018"
+output:
+    html_document:
+        toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+```{r set-options, message=F}
+options(width=100)
+library('rhdf5')
+dropbox_dir <- '/Users/Egor/Dropbox/' # Mac / Toshi
+data_dir <- paste0(dropbox_dir, 'Projects/eb/eb/')
+# Read in the input file:
+input_file <- paste0(data_dir, 'events.hdf5')
+# List the subdivisions within the input file:
+h5ls(input_file)
+beh_data <- h5read(input_file, '/')
+```
