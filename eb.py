@@ -7,12 +7,9 @@ Creator: Egor Ananyev
 Original date: 2018-11-15
 """
 
-# todo: test if I need to use iohub for keyboard, or can get away with default psychopy
-
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, core, event, gui, sound, monitors
-from psychopy.iohub import (EventConstants, EyeTrackerConstants, getCurrentDateTimeString,
-                            ioHubExperimentRuntime)
+from psychopy.iohub import getCurrentDateTimeString, ioHubExperimentRuntime
 import numpy as np
 from psychopy.data import TrialHandler, importConditions
 import pandas as pd
@@ -40,10 +37,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # the time window for the blink - quite conservative - should include the whole blink, but is independent of
         # the blink start/end
         blink_time_window = .3
-        post_blink_dur = .05
         # display dimensions:
-        fix_cross_sz = .3  # length of the two cross lines, in dva
-        fix_cross_thick = 3  # pixels
         if debug:
             dr = (576, 432)
             ds = 61
@@ -70,7 +64,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
         if exp_info['cond'] == 'd':
             trial_n = 1
-        end_exp_now = False  # flag for 'escape' or other condition => quit the exp
 
         ## Input and output
 
@@ -119,17 +112,13 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         ## Initialize the stimuli and instructions
         instruction_text = "Please press the ''space'' key\nto start the experiment"
-        # instructions_text_stim = visual.TextStim(window, text=instruction_text, pos=[0, 0], height=24,
-        #                                          color=[-1, -1, -1], colorSpace='rgb', alignHoriz='center',
-        #                                          alignVert='center', wrapWidth=window.size[0] * .9)
         instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.4)
-        # todo: potentially adjust the 'height' for better cross size
+        # todo: measure cross size
         fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=.3)
 
         # auditory tone (for blink condition):
         print('using %s (with %s) for sounds' % (sound.audioLib, sound.audioDriver))
         beep = sound.Sound('A', octave=5, sampleRate=44100, secs=beep_dur, stereo=True)
-        # todo: test if this is too soft on the machine
         beep.setVolume(.1)  # this isn't needed in Aaron's paradigm -- the sound is softer
 
         # cue:
@@ -139,9 +128,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         # target:
         targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
-
-        # target response:
-        key_arrow = event.BuilderKeyResponse()
 
         ## Initiating the iohub routines
 
@@ -245,11 +231,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
             ## Starting the eye-tracking recording.
 
-            # Trial components pertaining to eye blinks:
-            blinked = False  # blink detection
-            t_blink_start = 0  # blink start & end time
-            t_blink_end = 0
-
             # Recording trial characteristics in the trial output:
             flip_time = window.flip()
 
@@ -264,7 +245,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             if debug:
                 trial_elapsed_frames = 0  # counting frames for frame skip test
 
-            ## Fixation cross:
+            # Fixation cross:
             fix_1_frames = int(fix_1_dur * frame_rate)
             for fix_1_frame in range(fix_1_frames):
                 frame_routine()
@@ -272,7 +253,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            ## The rest of the period without the beep, but with the cue:
+            # The rest of the period without the beep, but with the cue:
             cue_frames = int(cue_dur * frame_rate)
             for cue_frame in range(cue_frames):
                 frame_routine()
@@ -281,7 +262,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            ## The brief period with the beep:
+            # The brief period with the beep:
             beep_frames = int(beep_dur * frame_rate)
             for beep_frame in range(beep_frames):
                 frame_routine()
@@ -290,7 +271,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            ## Fixation 2 + blink period, i.e., the fixation period after the beep:
+            # Fixation 2 + blink period, i.e., the fixation period after the beep:
             blink_time_period_frames = int((blink_latency + blink_time_window) * frame_rate)
             for blink_time_period_frame in range(blink_time_period_frames):
                 flip_time = frame_routine()
@@ -347,6 +328,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 tracker.setRecordingState(False)
 
             ## Recording the data
+            # noinspection PyUnboundLocalVariable
             output_mat[n_trials_done - 1] = {'exp_name': exp_name,
                                              'subj': exp_info['subj'],
                                              'cond': exp_info['cond'],
@@ -397,8 +379,7 @@ if __name__ == "__main__":
     import os
     from psychopy.iohub import module_directory
 
-
-    def main(base_dir):
+    def main(base_dir_):
         # -- Sol's comments:
         """
         Creates an instance of the ExperimentRuntime class, gets the eye tracker the user wants to use for the demo, and
@@ -418,7 +399,7 @@ if __name__ == "__main__":
         # Also, since a single eye-tracker is used, I removed all references to other eye trackers beside the EyeLink
         # and removed the gui prompt asking for the type of eye tracker.
 
-        eye_config_dir = os.path.normcase(os.path.join(base_dir, 'iohub_configs'))
+        eye_config_dir = os.path.normcase(os.path.join(base_dir_, 'iohub_configs'))
         base_config_file = os.path.normcase(os.path.join(eye_config_dir, 'iohub_config.yaml.part'))
         eyetracker_config_file = os.path.normcase(os.path.join(eye_config_dir, 'eyelink_config.yaml'))
         combined_config_file_name = os.path.normcase(os.path.join(eye_config_dir, 'iohub_config.yaml'))
