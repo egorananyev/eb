@@ -10,21 +10,14 @@ Original date: 2018-11-15
 # todo: test if I need to use iohub for keyboard, or can get away with default psychopy
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
-from psychopy import visual, core, data, event, gui, sound, monitors
-# from psychopy.constants import *  # things like STARTED, FINISHED
+from psychopy import visual, core, event, gui, sound, monitors
 from psychopy.iohub import (EventConstants, EyeTrackerConstants, getCurrentDateTimeString,
                             ioHubExperimentRuntime)
 import numpy as np
 from psychopy.data import TrialHandler, importConditions
 import pandas as pd
 from datetime import datetime
-# import shutil
-# import copy
-import os
 
-
-# Ensure that relative paths start from the same directory as this script
-# _thisDir = os.path.dirname(os.path.abspath(__file__))
 
 class ExperimentRuntime(ioHubExperimentRuntime):
     # -
@@ -62,7 +55,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # cue:
         cue_off_y = .8
         cue_dur = .2
-        cue_valid = .7  # validity of the cue
         beep_dur = .05
         # target:
         targ_off_x = 3
@@ -91,11 +83,13 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                                                            exp_info['sess'], exp_info['time'])
         out_file_path = '..' + os.sep + 'data' + os.sep + out_file_name
 
+        # output matrix:
+        output_mat = {}
+
         ## Handy shortcuts:
         tracker = self.hub.devices.tracker
         display = self.hub.devices.display
         kb = self.hub.devices.keyboard
-        mouse = self.hub.devices.mouse
 
         ## EyeLink & screen setup
 
@@ -124,7 +118,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                 print('WARNING! The measured frame rate is lower than expected')
 
         ## Initialize the stimuli and instructions
-        instruction_text = "press space key to start the experiment"
+        instruction_text = "Please press the ''space'' key\nto start the experiment"
         # instructions_text_stim = visual.TextStim(window, text=instruction_text, pos=[0, 0], height=24,
         #                                          color=[-1, -1, -1], colorSpace='rgb', alignHoriz='center',
         #                                          alignVert='center', wrapWidth=window.size[0] * .9)
@@ -192,11 +186,6 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         def exit_routine():
             window.close()
             core.quit()
-
-        ## Recording the data in the data set:
-        output_mat = {}
-        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'sess_id', 'trial_id', 'targ_right', 'cue_valid',
-                        'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
 
         ## Initiating the trial loop
 
@@ -354,6 +343,9 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = flip_time
 
+            if not debug:
+                tracker.setRecordingState(False)
+
             ## Recording the data
             output_mat[n_trials_done - 1] = {'exp_name': exp_name,
                                              'subj': exp_info['subj'],
@@ -374,10 +366,31 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             self.hub.clearEvents('all')
 
         ## Data output:
+        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'sess_id', 'trial_id', 'targ_right', 'cue_valid',
+                        'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path + '.csv', index=False,
                                                                   columns=data_columns)
         # .to_csv(out_file_path + '.csv', index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
+
+        ## Termination procedures post-trial
+        # So the experiment is done, all trials have been run. Clear the screen and show an 'experiment  done' message
+        # using the instructionScreen state. Wait for the trigger to exit that state (i.e. the space key was pressed).
+
+        # Disconnect the eye tracking device:
+        tracker.setConnectionState(False)
+
+        # Update the instruction screen text:
+        window.flip()
+        instructions_text_stim.setText('      Completed!\nPress any key to exit')
+        instructions_text_stim.draw()
+        flip_time = window.flip()
+        self.hub.sendMessageEvent(text="EXPERIMENT COMPLETED", sec_time=flip_time)
+
+        # wait until any key is pressed
+        kb.waitForPresses()
+
+        self.hub.sendMessageEvent(text='EXPERIMENT_COMPLETE')
 
 
 if __name__ == "__main__":
