@@ -38,8 +38,8 @@ dummy_mode = True
 exp_name = 'eb1'
 trial_n = 15  # trials per row; 15 gives 300 trials
 fix_1_dur = .4  # the time frame before the cue, if any
-blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
-blink_latency_max = 500
+blink_latency_min = 90  # these are in ms, because we need a random _integer_ in this range
+blink_latency_max = 350  # Note! the range is actually 240-500 ms, but 150 are already included in eyelink waiting
 # the time window for the blink - quite conservative - should include the whole blink, but is independent of
 # the blink start/end
 blink_time_window = .3
@@ -87,6 +87,7 @@ if exp_info['cond'] == 'v':
 if exp_info['cond'] == 'a':
     shutters = True
     import serial
+
     ser = serial.Serial('/dev/ttyACM0', 9600)
     ser.write('c')
 
@@ -104,32 +105,35 @@ out_file_path = '..' + os.sep + 'data' + os.sep + out_file_name
 # output matrix:
 output_mat = {}
 
-## Handy shortcuts:
-# todo: initiate the tracker, display (?), and the keyboard
+## EyeLink setup
 if not dummy_mode:
     tracker = pylink.EyeLink('100.1.1.1')
 else:
     tracker = pylink.EyeLink(None)
-# display = self.hub.devices.display
-# kb = self.hub.devices.keyboard
 
-## EyeLink & screen setup
+# Note that the file name cannot exceeds 8 characters. Open eyelink data files as early to record as possible.
+edf_subj_data_dir_name = out_file_name
+edf_data_file_path = '..' + os.sep + 'edf_data' + os.sep + edf_subj_data_dir_name
+if not os.path.exists(edf_data_file_path):
+    os.makedirs(edf_data_file_path)
+edf_data_file_name = datetime.now().strftime('%m%d%H%M') + '.edf'  # to avoid overwriting, naming MMDDHHmm
+tracker.openDataFile(edf_data_file_name)
+# add personalized data file header (preamble text)
+tracker.sendCommand("add_file_preamble_text 'Study: Influence of blinks on attentional cueing'")
 
-# start by running the eye tracker default setup procedure.
-if not dummy_mode:
-    tracker.runSetupProcedure()
-
+## Monitor setup
 if toshi:
     mon = monitors.Monitor('Dell', width=dd[0], distance=ds)
     window = visual.Window(size=dr, monitor=mon, fullscr=False, screen=1, units='deg')
 else:
-    # - Create a psychopy window, full screen resolution, full screen mode...
-    res = display.getPixelResolution()
-    window = visual.Window(res, monitor='Screen1', units=display.getCoordinateType(), fullscr=True,
-                           allowGUI=False, waitBlanking=False, screen=display.getIndex())
+    # you MUST specify the physical properties of your monitor first, otherwise you won't be able to properly use
+    # different screen "units" in psychopy. One may define his/her monitor object within the GUI, but
+    # I find it is a better practice to put things all under control in the experimental script instead.
+    mon = monitors.Monitor('Station3', width=dd[0], distance=ds)
+    mon.setSizePix(dr)
+    window = visual.Window(dr, fullscr=True, monitor=mon, color=[0, 0, 0], units='pix',
+                           allowStencil=True, autoLog=False)
 
-# display_coord_type = display.getCoordinateType()
-# print('unit type: ', display_coord_type)
 if debug:
     frame_rate = 60
 else:
@@ -157,7 +161,59 @@ cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', siz
 # target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
 
-# todo: initiate the pylink routines here?
+## Eye-tracking calibration:
+# call the custom calibration routine "EyeLinkCoreGraphicsPsychopy.py", instead of the default
+# routines that were implemented in SDL
+custom_calibration = EyeLinkCoreGraphicsPsychoPy(tracker, window)
+pylink.openGraphicsEx(custom_calibration)
+
+## STEP V: Set up the tracker
+# we need to put the tracker in offline mode before we change its configrations
+tracker.setOfflineMode()
+# sampling rate, 250, 500, 1000, or 2000; this command won't work for EyeLInk II/I
+tracker.sendCommand('sample_rate 500')
+# inform the tracker the resolution of the subject display
+# [see Eyelink Installation Guide, Section 8.4: Customizing Your PHYSICAL.INI Settings ]
+tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (scnWidth - 1, scnHeight - 1))
+# save display resolution in EDF data file for Data Viewer integration purposes
+# [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
+tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (scnWidth - 1, scnHeight - 1))
+# specify the calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
+tracker.sendCommand("calibration_type = HV9")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
+# the model of the tracker, 1-EyeLink I, 2-EyeLink II, 3-Newer models (100/1000Plus/DUO)
+eyelinkVer = tracker.getTrackerVersion()
+# turn off 'scene link' camera stuff (EyeLink II/I only)
+if eyelinkVer == 2:
+    tracker.sendCommand("scene_camera_gazemap = NO")
+# Set the tracker to parse Events using "GAZE" (or "HREF") data
+tracker.sendCommand("recording_parse_type = GAZE")
+# Online parser configuration: 0-> standard/cognitive, 1-> sensitive/psychophysiological
+# the Parser for EyeLink I is more conservative, see below
+# [see Eyelink User Manual, Section 4.3: EyeLink Parser Configuration]
+if eyelinkVer >= 2:
+    tracker.sendCommand('select_parser_configuration 0')
+# get Host tracking software version
+hostVer = 0
+if eyelinkVer == 3:
+    tvstr = tracker.getTrackerVersionString()
+    vindex = tvstr.find("EYELINK CL")
+    hostVer = int(float(tvstr[(vindex + len("EYELINK CL")):].strip()))
+
+## Sending eye-tracker commands and calibration:
+# specify the EVENT and SAMPLE data that are stored in EDF or retrievable from the Link
+# See Section 4 Data Files of the EyeLink user manual
+tracker.sendCommand("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT")
+tracker.sendCommand("link_event_filter = LEFT,RIGHT,FIXATION,FIXUPDATE,SACCADE,BLINK,BUTTON,INPUT")
+if hostVer >= 4:
+    tracker.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,HTARGET,INPUT")
+    tracker.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET,INPUT")
+else:
+    tracker.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,INPUT")
+    tracker.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT")
+
+# Calibration:
+tracker.doTrackerSetup()
+
 
 ## Handy routines:
 
@@ -165,6 +221,7 @@ targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillCo
 def frame_skip_check(elapsed_t, elapsed_frames):
     # The number of elapsed frames should match the time:
     print('time=%.3f  frames=%d  rate=%.4f' % (elapsed_t, elapsed_frames, (elapsed_t / elapsed_frames)))
+
 
 # This is done at every frame update, regardless of trial phase, so predefining:
 def frame_routine():
@@ -175,12 +232,40 @@ def frame_routine():
         exit_routine()
     return flip_time_
 
+
 # Also no variation across frames, but only available upon call, which is made only in key registering phase.
 def exit_routine():
     if shutters:
         ser.write('z')
+
+    # Behavioural data output:
+    data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
+                    'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
+    pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path + '.csv', index=False,
+                                                              columns=data_columns)
+    # .to_csv(out_file_path + '.csv', index=False, columns=data_columns)
+    print('output file path is ' + out_file_path)
+
+    # EDF output:
+    # close the EDF data file
+    tracker.setOfflineMode()
+    tracker.closeDataFile()
+    pylink.pumpDelay(50)
+
+    # Get the EDF data and say goodbye
+    instructions_text_stim.setText('Recording data...')
+    instructions_text_stim.draw()
+    window.flip()
+    tracker.receiveDataFile(edf_data_file_name, edf_data_file_path + os.sep + edf_data_file_name)
+
+    # close the link to the tracker
+    tracker.close()
+
+    # close the graphics
+    pylink.closeGraphics()
     window.close()
     core.quit()
+
 
 ## Initiating the trial loop
 
@@ -194,14 +279,10 @@ for trial in trials:
         instructions_text_stim.setText(instruction_text)
         instructions_text_stim.draw()
         flip_time = window.flip()
-        # todo: message pylink about experiment start?
 
         # wait until a space key event occurs after the instructions are displayed
-        kb.waitForPresses(keys=' ')
+        event.waitKeys(' ')
 
-    ## Trial components:
-
-    # Trial components pertaining to time, frames, and trial number:
     n_trials_done += 1
     print('======TRIAL#' + str(n_trials_done) + '======')
 
@@ -211,6 +292,7 @@ for trial in trials:
             iti_dur = flip_time - iti_end_trial
             print('inter-trial duration: %.3f' % iti_dur)
 
+    ## Randomizing variables and assigning the conditions:
     # Randomize the duration of the post-cue fixation & converting to sec:
     blink_latency = np.random.randint(blink_latency_min,
                                       blink_latency_max + 1) / 1000  # max value has to be one up
@@ -239,15 +321,41 @@ for trial in trials:
     else:
         print('invalid cue')
 
+    # Condition string, to pass to the eye tracker, just in case:
+    cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
+
     ## Starting the eye-tracking recording.
 
-    # Recording trial characteristics in the trial output:
+    # We pump 150 ms delay to allow sufficient time to initiate trials, during which the fixation cross is displayed:
     flip_time = window.flip()
+    fix_cross.draw()
 
     # Starting the recording:
-    # todo: start the pylink recording here?
+    # take the tracker offline
+    tracker.setOfflineMode()
+    pylink.pumpDelay(50)
 
-    ## Starting the frame cycle & waiting for the response.
+    # send the standard "TRIALID" message to mark the start of a trial
+    # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
+    tracker.sendMessage('TRIALID')
+
+    # record_status_message : show some info on the host PC
+    tracker.sendCommand("record_status_message 'Condition: %s'" % cond_str)
+
+    # drift check
+    try:
+        err = tracker.doDriftCorrect(scnWidth / 2, scnHeight / 2, 1, 1)
+    except:
+        tracker.doTrackerSetup()
+
+    # read out calibration/drift-correction results:
+    print(tracker.getCalibrationMessage())
+
+    # start recording, parameters specify whether events and samples are stored in file and available over the link
+    error = tracker.startRecording(1, 1, 1, 1)
+    pylink.pumpDelay(100)  # wait for 100 ms to make sure data of interest is recorded
+
+    ## Cycling through the trial phases:
     trial_t_start = flip_time
     if debug:
         trial_elapsed_frames = 0  # counting frames for frame skip test
@@ -345,9 +453,6 @@ for trial in trials:
                     frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                     iti_end_trial = flip_time
 
-    if not debug:
-        tracker.setRecordingState(False)
-
     ## Recording the data
     # noinspection PyUnboundLocalVariable
     output_mat[n_trials_done - 1] = {'exp_name': exp_name,
@@ -363,31 +468,16 @@ for trial in trials:
                                      'corr_resp': corr_resp,
                                      'rt': rt}
 
-    # Passing messages to the eye tracker before trial termination:
-    # todo
+    ## Stopping the eye tracking
+    # send trial variables for Data Viewer integration
+    # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
+    tracker.sendMessage('!V TRIAL_VAR task %s' % cond_str)
 
-## Data output:
-data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
-                'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
-pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path + '.csv', index=False,
-                                                          columns=data_columns)
-# .to_csv(out_file_path + '.csv', index=False, columns=data_columns)
-print('output file path is ' + out_file_path)
+    # send a message to mark the end of trial
+    # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
+    tracker.sendMessage('TRIAL_RESULT')
+    pylink.pumpDelay(100)
+    tracker.stopRecording()
 
-## Termination procedures post-trial
-# So the experiment is done, all trials have been run. Clear the screen and show an 'experiment  done' message
-# using the instructionScreen state. Wait for the trigger to exit that state (i.e. the space key was pressed).
-
-# Disconnect the eye tracking device:
-tracker.setConnectionState(False)
-
-# Update the instruction screen text:
-window.flip()
-instructions_text_stim.setText('      Completed!\nPress any key to exit')
-instructions_text_stim.draw()
-flip_time = window.flip()
-# todo: signal experiment completion
-
-# wait until any key is pressed
-kb.waitForPresses()
-
+# Finishing the experiment
+exit_routine()
