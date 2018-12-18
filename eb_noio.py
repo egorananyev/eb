@@ -174,10 +174,10 @@ tracker.setOfflineMode()
 tracker.sendCommand('sample_rate 500')
 # inform the tracker the resolution of the subject display
 # [see Eyelink Installation Guide, Section 8.4: Customizing Your PHYSICAL.INI Settings ]
-tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (scnWidth - 1, scnHeight - 1))
+tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dd[0]-1, dd[1]-1))
 # save display resolution in EDF data file for Data Viewer integration purposes
 # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
-tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (scnWidth - 1, scnHeight - 1))
+tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dd[0]-1, dd[1]-1))
 # specify the calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 tracker.sendCommand("calibration_type = HV9")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
 # the model of the tracker, 1-EyeLink I, 2-EyeLink II, 3-Newer models (100/1000Plus/DUO)
@@ -344,7 +344,7 @@ for trial in trials:
 
     # drift check
     try:
-        err = tracker.doDriftCorrect(scnWidth / 2, scnHeight / 2, 1, 1)
+        err = tracker.doDriftCorrect(dd[0]/2, dd[1]/2, 1, 1)
     except:
         tracker.doTrackerSetup()
 
