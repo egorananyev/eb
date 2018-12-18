@@ -327,8 +327,8 @@ for trial in trials:
     ## Starting the eye-tracking recording.
 
     # We pump 150 ms delay to allow sufficient time to initiate trials, during which the fixation cross is displayed:
-    flip_time = window.flip()
     fix_cross.draw()
+    flip_time = window.flip()
 
     # Starting the recording:
     # take the tracker offline
