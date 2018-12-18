@@ -5,6 +5,17 @@ from __future__ import print_function
 The influence of eye blinks on attentional cueing.
 Creator: Egor Ananyev
 Original date: 2018-11-15
+
+# Variables for communicating with Arduino (shutter goggles):
+AirOff = 'a'
+AirOn = 'b'
+LeftOn = 'l' #goggles 
+LeftOff = 'm' #goggles
+RightOn = 'r' #goggles
+RightOff = 's' #goggles
+LensOn = 'c' #both sides clear
+LensOff = 'z' #both sides opaque
+AllOff = 'x
 """
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
@@ -30,7 +41,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # experiment variables:
         exp_name = 'eb1'
         trial_n = 15  # trials per row; 15 gives 300 trials
-        debug = True  # are we using the eye tracker in the session? must be False for expt general timing variables:
+        toshi = True  # are we using the eye tracker in the session? must be False for expt general timing variables:
         fix_1_dur = .4  # the time frame before the cue, if any
         blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
         blink_latency_max = 500
@@ -38,7 +49,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         # the blink start/end
         blink_time_window = .3
         # display dimensions:
-        if debug:
+        if toshi:
             dr = (576, 432)
             ds = 61
             dd = (17.2, 12.9)  # display dimensions in cm
@@ -54,7 +65,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         targ_off_x = 3
         targ_diam = .5
 
-        ## getting user info about the experiment session:
+        ## Getting user info about the experiment session:
         exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'd', u'sess': u''}
         # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
         exp_name = exp_info['expt']
@@ -62,8 +73,27 @@ class ExperimentRuntime(ioHubExperimentRuntime):
         if not dlg.OK:
             core.quit()  # user pressed cancel
         exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
+
+        # Assigning conditions:
+        debug = False
+        eye_tracking = True  # true by default
+        training = False
+        voluntary = False
+        shutters = False
+        print('Condition: ' + exp_info['cond'])
         if exp_info['cond'] == 'd':
+            debug = True
+            eye_tracking = False
+        if exp_info['cond'] == 't':
             trial_n = 1
+            training = True
+        if exp_info['cond'] == 'v':
+            voluntary = True
+        if exp_info['cond'] == 'a':
+            shutters = True
+            import serial
+            ser = serial.Serial('/dev/ttyACM0', 9600)
+            ser.write('c')
 
         ## Input and output
 
@@ -88,27 +118,25 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         # - Start by running the eye tracker default setup procedure.
         selected_eyetracker_name = args[0]
-        if not debug:
+        if eye_tracking:
             tracker.runSetupProcedure()
 
-        if debug:
+        if toshi:
             mon = monitors.Monitor('Dell', width=dd[0], distance=ds)
             window = visual.Window(size=dr, monitor=mon, fullscr=False, screen=1, units='deg')
+            frame_rate = 60
         else:
             # - Create a psychopy window, full screen resolution, full screen mode...
             res = display.getPixelResolution()
             window = visual.Window(res, monitor='Screen1', units=display.getCoordinateType(), fullscr=True,
                                    allowGUI=False, waitBlanking=False, screen=display.getIndex())
-
-        # display_coord_type = display.getCoordinateType()
-        # print('unit type: ', display_coord_type)
-        if debug:
-            frame_rate = 60
-        else:
             frame_rate = window.getActualFrameRate()
             print('frame rate: ' + str(frame_rate))
             if frame_rate < 100:
                 print('WARNING! The measured frame rate is lower than expected')
+
+        display_coord_type = display.getCoordinateType()
+        print('unit type: ', display_coord_type)
 
         ## Initialize the stimuli and instructions
         instruction_text = "Please press the ''space'' key\nto start the experiment"
@@ -170,6 +198,8 @@ class ExperimentRuntime(ioHubExperimentRuntime):
 
         # Also no variation across frames, but only available upon call, which is made only in key registering phase.
         def exit_routine():
+            if shutters:
+                ser.write('z')
             window.close()
             core.quit()
 
@@ -237,7 +267,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
             # Starting the recording:
             self.hub.sendMessageEvent(text="TRIAL_START", sec_time=flip_time)
             self.hub.clearEvents('all')
-            if not debug:
+            if eye_tracking:
                 tracker.setRecordingState(True)
 
             ## Starting the frame cycle & waiting for the response.
@@ -271,13 +301,27 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
 
-            # Fixation 2 + blink period, i.e., the fixation period after the beep:
-            blink_time_period_frames = int((blink_latency + blink_time_window) * frame_rate)
+            # Blink latency = the fixation period after the beep:
+            blink_latency_frames = int(blink_latency * frame_rate)
+            for blink_latency_frame in range(blink_latency_frames):
+                flip_time = frame_routine()
+                if debug:
+                    # noinspection PyUnboundLocalVariable
+                    trial_elapsed_frames += 1
+
+            # Real or simulated blink follow the same timeline:
+            blink_time_period_frames = int(blink_time_window * frame_rate)
+            if shutters:
+                ser.write('z')
+                print('Closed the goggles.')
             for blink_time_period_frame in range(blink_time_period_frames):
                 flip_time = frame_routine()
                 if debug:
                     # noinspection PyUnboundLocalVariable
                     trial_elapsed_frames += 1
+            if shutters:
+                ser.write('c')
+                print('Opened the goggles.')
 
             ## Behavioural response: measuring the reaction time:
 
@@ -324,7 +368,7 @@ class ExperimentRuntime(ioHubExperimentRuntime):
                             frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
                             iti_end_trial = flip_time
 
-            if not debug:
+            if eye_tracking:
                 tracker.setRecordingState(False)
 
             ## Recording the data
