@@ -32,8 +32,8 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 # experiment variables:
 exp_name = 'eb1'
 trial_n = 15  # trials per row; 15 gives 300 trials
@@ -45,9 +45,11 @@ blink_latency_max = 350  # Note! the range is actually 240-500 ms, but 150 are a
 blink_time_window = .3
 # display dimensions:
 if toshi:
-    dr = (576, 432)
+    # dr = (576, 432)
     ds = 61
-    dd = (17.2, 12.9)  # display dimensions in cm
+    # dd = (17.2, 12.9)  # display dimensions in cm
+    dr = (1152, 864)  # display resolution in px
+    dd = (34.4, 25.8)  # display dimensions in cm
 else:
     dr = (1152, 864)  # display resolution in px
     ds = 58  # distance to screen in cm
@@ -78,6 +80,7 @@ shutters = False
 print('Condition: ' + exp_info['cond'])
 if exp_info['cond'] == 'd':
     debug = True
+    trial_n = 1
     eye_tracking = False
 if exp_info['cond'] == 't':
     trial_n = 1
@@ -124,17 +127,18 @@ tracker.sendCommand("add_file_preamble_text 'Study: Influence of blinks on atten
 ## Monitor setup
 if toshi:
     mon = monitors.Monitor('Dell', width=dd[0], distance=ds)
-    window = visual.Window(size=dr, monitor=mon, fullscr=False, screen=1, units='deg')
+    mon.setSizePix(dr)
+    window = visual.Window(dr, monitor=mon, fullscr=True, screen=1, units='deg')
 else:
     # you MUST specify the physical properties of your monitor first, otherwise you won't be able to properly use
     # different screen "units" in psychopy. One may define his/her monitor object within the GUI, but
     # I find it is a better practice to put things all under control in the experimental script instead.
     mon = monitors.Monitor('Station3', width=dd[0], distance=ds)
     mon.setSizePix(dr)
-    window = visual.Window(dr, fullscr=True, monitor=mon, color=[0, 0, 0], units='pix',
-                           allowStencil=True, autoLog=False)
+    window = visual.Window(dr, fullscr=True, monitor=mon, color=[0, 0, 0], units='deg',
+                           allowStencil=True, autoLog=False, screen=0, waitBlanking=False)
 
-if debug:
+if toshi:
     frame_rate = 60
 else:
     frame_rate = window.getActualFrameRate()
