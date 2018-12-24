@@ -103,9 +103,17 @@ exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info
 trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
-out_file_name = '%s_subj-%s_cond-%s_sess-%s_%s' % (exp_name, exp_info['subj'], exp_info['cond'],
-                                                   exp_info['sess'], exp_info['time'])
-out_file_path = '..' + os.sep + 'data' + os.sep + out_file_name
+out_file_name = 'sess-%s_%s' % (exp_name, exp_info['sess'], exp_info['time'])
+exp_dir = '..' + 'data' + os.sep + exp_name
+if not os.path.exists(exp_dir):
+    os.makedirs(exp_dir)
+subj_dir = exp_dir + os.path + 'subj-%02d' % int(exp_info['subj'])
+if not os.path.exists(subj_dir):
+    os.makedirs(subj_dir)
+cond_dir = subj_dir + os.sep + 'cond-' + exp_info['cond']
+if not os.path.exists(cond_dir):
+    os.makedirs(cond_dir)
+out_file_path = cond_dir + os.sep + out_file_name
 
 # output matrix:
 output_mat = {}
@@ -117,10 +125,6 @@ else:
     tracker = pylink.EyeLink(None)
 
 # Note that the file name cannot exceeds 8 characters. Open eyelink data files as early to record as possible.
-edf_subj_data_dir_name = out_file_name
-edf_data_file_path = '..' + os.sep + 'edf_data' + os.sep + edf_subj_data_dir_name
-if not os.path.exists(edf_data_file_path):
-    os.makedirs(edf_data_file_path)
 edf_data_file_name = datetime.now().strftime('%m%d%H%M') + '.edf'  # to avoid overwriting, naming MMDDHHmm
 tracker.openDataFile(edf_data_file_name)
 # add personalized data file header (preamble text)
@@ -192,23 +196,15 @@ tracker.sendCommand("recording_parse_type = GAZE")
 # the Parser for EyeLink I is more conservative, see below
 # [see Eyelink User Manual, Section 4.3: EyeLink Parser Configuration]
 tracker.sendCommand('select_parser_configuration 0')
-# get Host tracking software version
-hostVer = 0
-tvstr = tracker.getTrackerVersionString()
-vindex = tvstr.find("EYELINK CL")
-hostVer = int(float(tvstr[(vindex + len("EYELINK CL")):].strip()))
+# Host tracking software version is 5
 
 ## Sending eye-tracker commands and calibration:
 # specify the EVENT and SAMPLE data that are stored in EDF or retrievable from the Link
 # See Section 4 Data Files of the EyeLink user manual
 tracker.sendCommand("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT")
 tracker.sendCommand("link_event_filter = LEFT,RIGHT,FIXATION,FIXUPDATE,SACCADE,BLINK,BUTTON,INPUT")
-if hostVer >= 4:
-    tracker.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,HTARGET,INPUT")
-    tracker.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET,INPUT")
-else:
-    tracker.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,INPUT")
-    tracker.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT")
+tracker.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,HTARGET,INPUT")
+tracker.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET,INPUT")
 
 # Calibration:
 tracker.doTrackerSetup()
@@ -237,7 +233,6 @@ def exit_routine():
     if shutters:
         ser.write('z')
         print('Closed the goggles.')
-
     # Behavioural data output:
     data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
                     'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
@@ -257,7 +252,7 @@ def exit_routine():
     instructions_text_stim.setText('    Finished!\nRecording data...')
     instructions_text_stim.draw()
     window.flip()
-    tracker.receiveDataFile(edf_data_file_name, edf_data_file_path + os.sep + edf_data_file_name)
+    tracker.receiveDataFile(edf_data_file_name, cond_dir + os.sep + edf_data_file_name)
 
     # close the link to the tracker
     tracker.close()
@@ -338,7 +333,7 @@ for trial in trials:
 
     # send the standard "TRIALID" message to mark the start of a trial
     # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
-    tracker.sendMessage('TRIALID')
+    tracker.sendMessage('TRIALID %02d' % n_trials_done)
 
     # record_status_message : show some info on the host PC
     tracker.sendCommand("record_status_message 'Condition: %s'" % cond_str)
