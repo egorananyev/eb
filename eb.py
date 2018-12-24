@@ -103,7 +103,7 @@ exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info
 trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
-out_file_name = 'sess-%s_%s' % (exp_name, exp_info['sess'], exp_info['time'])
+out_file_name = 'beh_out'
 exp_dir = '..' + 'data' + os.sep + exp_name
 if not os.path.exists(exp_dir):
     os.makedirs(exp_dir)
@@ -113,7 +113,8 @@ if not os.path.exists(subj_dir):
 cond_dir = subj_dir + os.sep + 'cond-' + exp_info['cond']
 if not os.path.exists(cond_dir):
     os.makedirs(cond_dir)
-out_file_path = cond_dir + os.sep + out_file_name
+sess_dir = 'sess-%s_%s' % (exp_name, exp_info['sess'], exp_info['time'])
+out_file_path = sess_dir + os.sep + out_file_name + '.csv'
 
 # output matrix:
 output_mat = {}
@@ -236,9 +237,7 @@ def exit_routine():
     # Behavioural data output:
     data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
                     'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
-    pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path + '.csv', index=False,
-                                                              columns=data_columns)
-    # .to_csv(out_file_path + '.csv', index=False, columns=data_columns)
+    pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
     print('output file path is ' + out_file_path)
 
     # EDF output:
@@ -252,7 +251,7 @@ def exit_routine():
     instructions_text_stim.setText('    Finished!\nRecording data...')
     instructions_text_stim.draw()
     window.flip()
-    tracker.receiveDataFile(edf_data_file_name, cond_dir + os.sep + edf_data_file_name)
+    tracker.receiveDataFile(edf_data_file_name, sess_dir + os.sep + edf_data_file_name)
 
     # close the link to the tracker
     tracker.close()
