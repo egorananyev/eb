@@ -54,15 +54,18 @@ if toshi:
     dd = (34.4, 25.8)  # display dimensions in cm
 else:
     dr = (1152, 864)  # display resolution in px
-    ds = 58  # distance to screen in cm
-    dd = (53.0, 30.0)  # display dimensions in cm
+    ds = 65  # distance to screen in cm
+    dd = (40.0, 30.0)  # display dimensions in cm ... 39.0 x 29.5
+# fixation cross:
+fix_size = 0.8
 # cue:
-cue_off_y = 2
-cue_dur = .2
+cue_size = .8
+cue_off_y = 1
+cue_dur = 20.2
 beep_dur = .05
 # target:
-targ_off_x = 12
-targ_diam = 1
+targ_off_x = 8
+targ_diam = .8
 
 ## getting user info about the experiment session:
 exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u'1'}
@@ -163,7 +166,7 @@ else:
 instruction_text = "Please press the ''space'' key\nto start the experiment"
 instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.8)
 # todo: measure cross size
-fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=1.2)
+fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=fix_size)
 
 # auditory tone (for blink condition):
 print('using %s (with %s) for sounds' % (sound.audioLib, sound.audioDriver))
@@ -172,7 +175,7 @@ beep.setVolume(.1)  # this isn't needed in Aaron's paradigm -- the sound is soft
 
 # cue:
 arrow_vert = [(.5, 0), (0, .3), (0, .1), (-.5, .1), (-.5, -.1), (0, -.1), (0, -.3)]
-cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=1.4, lineColor='black',
+cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=cue_size, lineColor='black',
                              pos=(0, cue_off_y))
 
 # target:
