@@ -34,6 +34,7 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 # experiment modes:
 toshi = False
 dummy_mode = False
+drift_check = False
 # experiment variables:
 exp_name = 'eb1'
 trial_n = 15  # trials per row; 15 gives 300 trials
@@ -53,14 +54,14 @@ if toshi:
 else:
     dr = (1152, 864)  # display resolution in px
     ds = 58  # distance to screen in cm
-    dd = (34.4, 25.8)  # display dimensions in cm
+    dd = (53.0, 30.0)  # display dimensions in cm
 # cue:
-cue_off_y = .8
+cue_off_y = 2
 cue_dur = .2
 beep_dur = .05
 # target:
-targ_off_x = 3
-targ_diam = .5
+targ_off_x = 12
+targ_diam = 1
 
 ## getting user info about the experiment session:
 exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'd', u'sess': u''}
@@ -148,9 +149,9 @@ else:
 
 ## Initialize the stimuli and instructions
 instruction_text = "Please press the ''space'' key\nto start the experiment"
-instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.4)
+instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.8)
 # todo: measure cross size
-fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=.3)
+fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=1.2)
 
 # auditory tone (for blink condition):
 print('using %s (with %s) for sounds' % (sound.audioLib, sound.audioDriver))
@@ -159,7 +160,7 @@ beep.setVolume(.1)  # this isn't needed in Aaron's paradigm -- the sound is soft
 
 # cue:
 arrow_vert = [(.5, 0), (0, .3), (0, .1), (-.5, .1), (-.5, -.1), (0, -.1), (0, -.3)]
-cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=.3, lineColor='black',
+cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=1.4, lineColor='black',
                              pos=(0, cue_off_y))
 
 # target:
@@ -178,30 +179,23 @@ tracker.setOfflineMode()
 tracker.sendCommand('sample_rate 500')
 # inform the tracker the resolution of the subject display
 # [see Eyelink Installation Guide, Section 8.4: Customizing Your PHYSICAL.INI Settings ]
-tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dd[0]-1, dd[1]-1))
+tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
 # save display resolution in EDF data file for Data Viewer integration purposes
 # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
-tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dd[0]-1, dd[1]-1))
+tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
 # specify the calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 tracker.sendCommand("calibration_type = HV9")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
-# the model of the tracker, 1-EyeLink I, 2-EyeLink II, 3-Newer models (100/1000Plus/DUO)
-eyelinkVer = tracker.getTrackerVersion()
-# turn off 'scene link' camera stuff (EyeLink II/I only)
-if eyelinkVer == 2:
-    tracker.sendCommand("scene_camera_gazemap = NO")
 # Set the tracker to parse Events using "GAZE" (or "HREF") data
 tracker.sendCommand("recording_parse_type = GAZE")
 # Online parser configuration: 0-> standard/cognitive, 1-> sensitive/psychophysiological
 # the Parser for EyeLink I is more conservative, see below
 # [see Eyelink User Manual, Section 4.3: EyeLink Parser Configuration]
-if eyelinkVer >= 2:
-    tracker.sendCommand('select_parser_configuration 0')
+tracker.sendCommand('select_parser_configuration 0')
 # get Host tracking software version
 hostVer = 0
-if eyelinkVer == 3:
-    tvstr = tracker.getTrackerVersionString()
-    vindex = tvstr.find("EYELINK CL")
-    hostVer = int(float(tvstr[(vindex + len("EYELINK CL")):].strip()))
+tvstr = tracker.getTrackerVersionString()
+vindex = tvstr.find("EYELINK CL")
+hostVer = int(float(tvstr[(vindex + len("EYELINK CL")):].strip()))
 
 ## Sending eye-tracker commands and calibration:
 # specify the EVENT and SAMPLE data that are stored in EDF or retrievable from the Link
@@ -257,7 +251,8 @@ def exit_routine():
     pylink.pumpDelay(50)
 
     # Get the EDF data and say goodbye
-    instructions_text_stim.setText('Recording data...')
+    window.flip()
+    instructions_text_stim.setText('    Finished!\nRecording data...')
     instructions_text_stim.draw()
     window.flip()
     tracker.receiveDataFile(edf_data_file_name, edf_data_file_path + os.sep + edf_data_file_name)
@@ -347,13 +342,13 @@ for trial in trials:
     tracker.sendCommand("record_status_message 'Condition: %s'" % cond_str)
 
     # drift check
-    try:
-        err = tracker.doDriftCorrect(dd[0]/2, dd[1]/2, 1, 1)
-    except:
-        tracker.doTrackerSetup()
-
-    # read out calibration/drift-correction results:
-    print(tracker.getCalibrationMessage())
+    if drift_check:
+        try:
+            err = tracker.doDriftCorrect(dr[0]/2, dr[1]/2, 1, 1)
+        except:
+            tracker.doTrackerSetup()
+        # read out calibration/drift-correction results:
+        print('drift summary = "' + tracker.getCalibrationMessage() + '"')
 
     # start recording, parameters specify whether events and samples are stored in file and available over the link
     error = tracker.startRecording(1, 1, 1, 1)
