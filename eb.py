@@ -64,7 +64,7 @@ targ_off_x = 12
 targ_diam = 1
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'd', u'sess': u''}
+exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
 exp_name = exp_info['expt']
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
@@ -104,16 +104,21 @@ trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
 out_file_name = 'beh_out'
-exp_dir = '..' + 'data' + os.sep + exp_name
+exp_dir = '..' + os.sep + 'data' + os.sep + exp_name
 if not os.path.exists(exp_dir):
+    print('experiment directory does not exist')
     os.makedirs(exp_dir)
-subj_dir = exp_dir + os.path + 'subj-%02d' % int(exp_info['subj'])
+else:
+    print('experiment directory exists')
+subj_dir = exp_dir + os.sep + 'subj-%02d' % int(exp_info['subj'])
 if not os.path.exists(subj_dir):
     os.makedirs(subj_dir)
 cond_dir = subj_dir + os.sep + 'cond-' + exp_info['cond']
 if not os.path.exists(cond_dir):
     os.makedirs(cond_dir)
-sess_dir = 'sess-%s_%s' % (exp_name, exp_info['sess'], exp_info['time'])
+sess_dir = cond_dir + os.sep + 'sess-%s_%s' % (exp_info['sess'], exp_info['time'])
+if not os.path.exists(sess_dir):
+    os.makedirs(sess_dir)
 out_file_path = sess_dir + os.sep + out_file_name + '.csv'
 
 # output matrix:
@@ -126,7 +131,7 @@ else:
     tracker = pylink.EyeLink(None)
 
 # Note that the file name cannot exceeds 8 characters. Open eyelink data files as early to record as possible.
-edf_data_file_name = datetime.now().strftime('%m%d%H%M') + '.edf'  # to avoid overwriting, naming MMDDHHmm
+edf_data_file_name = 'eye_out.edf'
 tracker.openDataFile(edf_data_file_name)
 # add personalized data file header (preamble text)
 tracker.sendCommand("add_file_preamble_text 'Study: Influence of blinks on attentional cueing'")
