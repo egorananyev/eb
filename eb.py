@@ -22,6 +22,7 @@ from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, core, event, gui, sound, monitors
 import numpy as np
 import os
+from subprocess import call  # for running shell commands from within Python
 from psychopy.data import TrialHandler, importConditions
 import pandas as pd
 from datetime import datetime
@@ -64,7 +65,7 @@ targ_off_x = 12
 targ_diam = 1
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u''}
+exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u'1'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
 exp_name = exp_info['expt']
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
@@ -257,6 +258,13 @@ def exit_routine():
     instructions_text_stim.draw()
     window.flip()
     tracker.receiveDataFile(edf_data_file_name, sess_dir + os.sep + edf_data_file_name)
+
+    # Converting the EDF to ASC from within this code
+    print('converting EDF to ASC, zipping it, and moving the original EDF file to a different directory')
+    call(['edf2asc', sess_dir + os.sep + edf_data_file_name])
+    call(['gzip', sess_dir + os.sep + 'eye_out.asc'])
+    call(['mv', sess_dir + os.sep + edf_data_file_name,
+          '..' + os.sep + 'edf_data' + os.sep + exp_info['time'] + '.edf'])
 
     # close the link to the tracker
     tracker.close()
