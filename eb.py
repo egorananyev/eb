@@ -69,7 +69,7 @@ targ_diam = .8
 
 ## getting user info about the experiment session:
 exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u'1'}
-# conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug
+# conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 exp_name = exp_info['expt']
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
 if not dlg.OK:
@@ -82,24 +82,30 @@ eye_tracking = True  # true by default
 training = False
 voluntary = False
 shutters = False
+measure = False
 print('Condition: ' + exp_info['cond'])
-if exp_info['cond'] == 'd':
-    debug = True
-    trial_n = 1
-    eye_tracking = False
-if exp_info['cond'] == 't':
-    trial_n = 1
-    training = True
-if exp_info['cond'] == 'v':
-    voluntary = True
-if exp_info['cond'] == 'a':
-    import serial
-    shutters = True
-    ser = serial.Serial('/dev/ttyACM0', 9600)
-    ser.write('c')  # both sides clear
+if exp_info['cond'] == 'm':
+    measure = True
+else:
+    if exp_info['cond'] == 'd':
+        debug = True
+        trial_n = 1
+        eye_tracking = False
+    if exp_info['cond'] == 't':
+        trial_n = 1
+        training = True
+    if exp_info['cond'] == 'v':
+        voluntary = True
+    if exp_info['cond'] == 'a':
+        import serial
+        shutters = True
+        ser = serial.Serial('/dev/ttyACM0', 9600)
+        ser.write('c')  # both sides clear
 
 # Handling condition instructions:
-if exp_info['cond'] in ['c', 'a']:
+if measure:
+    cond_instr = 'Please blink immediately after each beep.'
+elif exp_info['cond'] in ['c', 'a']:
     cond_instr = 'Please do the following:\n' \
                  '(1) DO NOT BLINK during the trial - blink after the trial instead;\n' \
                  '(2) Pay attention to the arrow and\n' \
@@ -113,14 +119,17 @@ else:  # for 'd', 'v', or 'c'
 ## Input and output
 
 # condition file:
-if exp_info['cond'] == 'd':
-    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+if measure:
+    out_file_name = 'measure'
 else:
-    exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
-trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
+    if exp_info['cond'] == 'd':
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+    else:
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
+    trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
+    out_file_name = 'beh_out'
 
 # output file:
-out_file_name = 'beh_out'
 exp_dir = '..' + os.sep + 'data' + os.sep + exp_name
 if not os.path.exists(exp_dir):
     print('experiment directory does not exist')
@@ -291,6 +300,8 @@ def exit_routine():
     window.close()
     core.quit()
 
+
+## Measurement condition
 
 ## Initiating the trial loop
 
