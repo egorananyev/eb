@@ -176,7 +176,7 @@ else:
         print('WARNING! The measured frame rate is lower than expected')
 
 ## Initialize the stimuli and instructions
-space_text = "\n\nPress the space bar to start."
+space_text = "\n\nPress the spacebar to start"
 instr_text = cond_instr + space_text
 instr_text_stim = visual.TextStim(window, text=instr_text, height=.8)
 fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=fix_size)
@@ -212,7 +212,7 @@ tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
 # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
 tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
 # specify the calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
-tracker.sendCommand("calibration_type = HV9")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
+tracker.sendCommand("calibration_type = HV5")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
 # Set the tracker to parse Events using "GAZE" (or "HREF") data
 tracker.sendCommand("recording_parse_type = GAZE")
 # Online parser configuration: 0-> standard/cognitive, 1-> sensitive/psychophysiological
@@ -357,6 +357,7 @@ for trial in trials:
     # send the standard "TRIALID" message to mark the start of a trial
     # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
     tracker.sendMessage('TRIALID %02d' % n_trials_done)
+    tracker.sendMessage('TRIAL_START %.2f' % flip_time)
 
     # record_status_message : show some info on the host PC
     tracker.sendCommand("record_status_message 'Condition: %s'" % cond_str)
@@ -466,21 +467,29 @@ for trial in trials:
                 rt = flip_time - rt_start
                 if beh_resp == this_targ_loc:
                     corr_resp = 1  # correct location response
+                    accuracy_feedback = 'Correct!'
                 else:
                     corr_resp = 0  # incorrect location response
+                    accuracy_feedback = 'INCORRECT!'
                 print('RT=%.2f correct?=%s' % (rt, corr_resp))
+                tracker.sendMessage('TRIAL_RESPONSE %.2f' % flip_time)
                 if debug:  # in debug mode, check if the frame rate looks okay
                     # noinspection PyUnboundLocalVariable
                     frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
 
-    ## Self-paced trial termination
-    # - Update the instruction screen text...
-    instr_text_stim.setText('press the "spacebar"\nwhen you are ready\nto continue')
+    ## Post-trial RT and accuracy
+    window.flip()
+    instr_text_stim.setText('Target Location: ' + accuracy_feedback +
+                            '\nReaction Time: %.2f' % rt +
+                            '\n\nPress the spacebar to continue')
     instr_text_stim.draw()
     flip_time = window.flip()
 
     # wait until a space key event occurs after the instructions are displayed
     event.waitKeys(' ')
+
+    flip_time = window.flip()
+    tracker.sendMessage('TRIAL_END %.2f' % flip_time)
 
     ## Recording the data
     # noinspection PyUnboundLocalVariable

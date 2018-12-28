@@ -1090,6 +1090,7 @@
       <w>convolve</w>
       <w>cooks.distance</w>
       <w>coop</w>
+      <w>coords</w>
       <w>cophenetic</w>
       <w>coplot</w>
       <w>cor</w>
@@ -1384,6 +1385,7 @@
       <w>fixPre1.8</w>
       <w>fixed.effects</w>
       <w>fixef</w>
+      <w>fixupdate</w>
       <w>flattenAssignment</w>
       <w>flchain</w>
       <w>fligner.test</w>
@@ -1449,6 +1451,7 @@
       <w>gaucov</w>
       <w>gaulss</w>
       <w>gaussian</w>
+      <w>gazeres</w>
       <w>gehan</w>
       <w>generic.skeleton</w>
       <w>genfan</w>
@@ -1670,6 +1673,7 @@
       <w>hsearch_db_concepts</w>
       <w>hsearch_db_keywords</w>
       <w>hsv</w>
+      <w>htarget</w>
       <w>huber</w>
       <w>hubers</w>
       <w>identify</w>
@@ -2341,6 +2345,7 @@
       <w>psnice</w>
       <w>pspline</w>
       <w>psurvreg</w>
+      <w>psychophysiological</w>
       <w>psychopy</w>
       <w>pt</w>
       <w>ptukey</w>
@@ -2351,6 +2356,7 @@
       <w>pweibull</w>
       <w>pwilcox</w>
       <w>pyears</w>
+      <w>pylink</w>
       <w>qbeta</w>
       <w>qbinom</w>
       <w>qbirthday</w>
@@ -2541,6 +2547,7 @@
       <w>rweibull</w>
       <w>rwilcox</w>
       <w>s</w>
+      <w>saccade</w>
       <w>saddle</w>
       <w>saddle.distn</w>
       <w>salinity</w>
