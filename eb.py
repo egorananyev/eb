@@ -33,12 +33,12 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = False
-dummy_mode = False
+toshi = True
+dummy_mode = True
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
-trial_n = 15  # trials per row; 15 gives 300 trials
+trial_n = 15  # trials per condition row; 15 gives 300 trials
 fix_1_dur = .4  # the time frame before the cue, if any
 blink_latency_min = 90  # these are in ms, because we need a random _integer_ in this range
 blink_latency_max = 350  # Note! the range is actually 240-500 ms, but 150 are already included in eyelink waiting
@@ -61,7 +61,7 @@ fix_size = 0.8
 # cue:
 cue_size = .8
 cue_off_y = 1
-cue_dur = 20.2
+cue_dur = .2
 beep_dur = .05
 # target:
 targ_off_x = 8
@@ -97,13 +97,26 @@ if exp_info['cond'] == 'a':
     shutters = True
     ser = serial.Serial('/dev/ttyACM0', 9600)
     ser.write('c')  # both sides clear
-    # TODO: temporary (for debug):
-    trial_n = 1
+
+# Handling condition instructions:
+if exp_info['cond'] in ['c', 'a']:
+    cond_instr = 'Please do the following:\n' \
+                 '(1) DO NOT BLINK during the trial - blink after the trial instead;\n' \
+                 '(2) Pay attention to the arrow and\n' \
+                 '(3) Indicate the location of the target circle as quickly as possible after the blink.'
+else:  # for 'd', 'v', or 'c'
+    cond_instr = 'Please do the following:\n' \
+                 '(1) Blink immediately after a beep;\n' \
+                 '(2) Pay attention to the arrow and\n' \
+                 '(3) Indicate the location of the target circle as quickly as possible after the blink.'
 
 ## Input and output
 
 # condition file:
-exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+if exp_info['cond'] == 'd':
+    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+else:
+    exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
 trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
@@ -163,9 +176,9 @@ else:
         print('WARNING! The measured frame rate is lower than expected')
 
 ## Initialize the stimuli and instructions
-instruction_text = "Please press the ''space'' key\nto start the experiment"
-instructions_text_stim = visual.TextStim(window, text=instruction_text, height=.8)
-# todo: measure cross size
+space_text = "\n\nPress the space bar to start."
+instr_text = cond_instr + space_text
+instr_text_stim = visual.TextStim(window, text=instr_text, height=.8)
 fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=fix_size)
 
 # auditory tone (for blink condition):
@@ -188,7 +201,7 @@ custom_calibration = EyeLinkCoreGraphicsPsychoPy(tracker, window)
 pylink.openGraphicsEx(custom_calibration)
 
 ## STEP V: Set up the tracker
-# we need to put the tracker in offline mode before we change its configrations
+# we need to put the tracker in offline mode before we change its configurations
 tracker.setOfflineMode()
 # sampling rate, 250, 500, 1000, or 2000; this command won't work for EyeLInk II/I
 tracker.sendCommand('sample_rate 500')
@@ -243,34 +256,35 @@ def exit_routine():
     if shutters:
         ser.write('z')
         print('Closed the goggles.')
+
     # Behavioural data output:
     data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
                     'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
     pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
     print('output file path is ' + out_file_path)
 
-    # EDF output:
-    # close the EDF data file
-    tracker.setOfflineMode()
-    tracker.closeDataFile()
-    pylink.pumpDelay(50)
-
-    # Get the EDF data and say goodbye
+    # Say goodbye:
     window.flip()
-    instructions_text_stim.setText('    Finished!\nRecording data...')
-    instructions_text_stim.draw()
+    instr_text_stim.setText('    Finished!\nRecording data...')
+    instr_text_stim.draw()
     window.flip()
-    tracker.receiveDataFile(edf_data_file_name, sess_dir + os.sep + edf_data_file_name)
 
-    # Converting the EDF to ASC from within this code
-    print('converting EDF to ASC, zipping it, and moving the original EDF file to a different directory')
-    call(['edf2asc', sess_dir + os.sep + edf_data_file_name])
-    call(['gzip', sess_dir + os.sep + 'eye_out.asc'])
-    call(['mv', sess_dir + os.sep + edf_data_file_name,
-          '..' + os.sep + 'edf_data' + os.sep + exp_info['time'] + '.edf'])
-
-    # close the link to the tracker
-    tracker.close()
+    if not dummy_mode:
+        # EDF output:
+        # close the EDF data file
+        tracker.setOfflineMode()
+        tracker.closeDataFile()
+        pylink.pumpDelay(50)
+        # Get the EDF data
+        tracker.receiveDataFile(edf_data_file_name, sess_dir + os.sep + edf_data_file_name)
+        # Converting the EDF to ASC from within this code
+        print('converting EDF to ASC, zipping it, and moving the original EDF file to a different directory')
+        call(['edf2asc', sess_dir + os.sep + edf_data_file_name])
+        call(['gzip', sess_dir + os.sep + 'eye_out.asc'])
+        call(['mv', sess_dir + os.sep + edf_data_file_name,
+              '..' + os.sep + 'edf_data' + os.sep + exp_info['time'] + '.edf'])
+        # close the link to the tracker
+        tracker.close()
 
     # close the graphics
     pylink.closeGraphics()
@@ -287,8 +301,8 @@ for trial in trials:
     ## First trial initiates instructions and sends the expt initiation message to the eye tracker:
     if n_trials_done == 0:
         # - Update the instruction screen text...
-        instructions_text_stim.setText(instruction_text)
-        instructions_text_stim.draw()
+        instr_text_stim.setText(instr_text)
+        instr_text_stim.draw()
         flip_time = window.flip()
 
         # wait until a space key event occurs after the instructions are displayed
@@ -296,12 +310,6 @@ for trial in trials:
 
     n_trials_done += 1
     print('======TRIAL#' + str(n_trials_done) + '======')
-
-    if debug:
-        if n_trials_done > 1:
-            # noinspection PyUnboundLocalVariable
-            iti_dur = flip_time - iti_end_trial
-            print('inter-trial duration: %.3f' % iti_dur)
 
     ## Randomizing variables and assigning the conditions:
     # Randomize the duration of the post-cue fixation & converting to sec:
@@ -355,6 +363,7 @@ for trial in trials:
 
     # drift check
     if drift_check:
+        # noinspection PyBroadException
         try:
             err = tracker.doDriftCorrect(dr[0]/2, dr[1]/2, 1, 1)
         except:
@@ -408,6 +417,7 @@ for trial in trials:
     # Real or simulated blink follow the same timeline:
     blink_time_period_frames = int(blink_time_window * frame_rate)
     if shutters:
+        # noinspection PyUnboundLocalVariable
         ser.write('z')
         print('Closed the goggles.')
     for blink_time_period_frame in range(blink_time_period_frames):
@@ -462,7 +472,15 @@ for trial in trials:
                 if debug:  # in debug mode, check if the frame rate looks okay
                     # noinspection PyUnboundLocalVariable
                     frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
-                    iti_end_trial = flip_time
+
+    ## Self-paced trial termination
+    # - Update the instruction screen text...
+    instr_text_stim.setText('press the "spacebar"\nwhen you are ready\nto continue')
+    instr_text_stim.draw()
+    flip_time = window.flip()
+
+    # wait until a space key event occurs after the instructions are displayed
+    event.waitKeys(' ')
 
     ## Recording the data
     # noinspection PyUnboundLocalVariable

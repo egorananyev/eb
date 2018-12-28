@@ -2674,6 +2674,7 @@
       <w>sortedXyData</w>
       <w>sp.vcov</w>
       <w>spMatrix</w>
+      <w>spacebar</w>
       <w>sparse.model.matrix</w>
       <w>sparseMatrix</w>
       <w>sparseVector</w>
