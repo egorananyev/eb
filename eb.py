@@ -119,15 +119,18 @@ else:  # for 'd', 'v', or 'c'
 ## Input and output
 
 # condition file:
+if exp_info['cond'] == 'd':
+    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+else:
+    exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
+
+# Trial handler depending on the measure or experimental stage:
 if measure:
     out_file_name = 'measure'
+    trials = TrialHandler(exp_conditions, 12, extraInfo=exp_info)
 else:
-    if exp_info['cond'] == 'd':
-        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
-    else:
-        exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
-    trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
     out_file_name = 'beh_out'
+    trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
 exp_dir = '..' + os.sep + 'data' + os.sep + exp_name
@@ -164,7 +167,7 @@ tracker.sendCommand("add_file_preamble_text 'Study: Influence of blinks on atten
 
 ## Monitor setup
 if toshi:
-    mon = monitors.Monitor('Dell', width=dd[0], distance=ds)
+    mon = monitors.Monitor('Toshi', width=dd[0], distance=ds)
     mon.setSizePix(dr)
     window = visual.Window(dr, monitor=mon, fullscr=True, screen=1, units='deg')
 else:
@@ -267,8 +270,11 @@ def exit_routine():
         print('Closed the goggles.')
 
     # Behavioural data output:
-    data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
-                    'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
+    if measure:
+        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'trial_start', 'trial_end']
+    else:
+        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
+                        'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
     pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
     print('output file path is ' + out_file_path)
 
@@ -301,10 +307,7 @@ def exit_routine():
     core.quit()
 
 
-## Measurement condition
-
 ## Initiating the trial loop
-
 n_trials_done = 0
 
 for trial in trials:
@@ -323,36 +326,39 @@ for trial in trials:
     print('======TRIAL#' + str(n_trials_done) + '======')
 
     ## Randomizing variables and assigning the conditions:
-    # Randomize the duration of the post-cue fixation & converting to sec:
-    blink_latency = np.random.randint(blink_latency_min,
-                                      blink_latency_max + 1) / 1000  # max value has to be one up
-    if debug:
-        print('blink_latency = %.3f' % blink_latency)
-
-    # Target location:
-    # this_targ_loc = np.random.randint(2) * 2 - 1
-    this_targ_loc = trial['targ_right'] * 2 - 1
-    if this_targ_loc > 0:
-        print('target location: Right')
+    if measure:
+        blink_latency = blink_latency_max
     else:
-        print('target location: Left')
-    targ.pos = (targ_off_x * this_targ_loc, 0)
+        # Randomize the duration of the post-cue fixation & converting to sec:
+        blink_latency = np.random.randint(blink_latency_min,
+                                          blink_latency_max + 1) / 1000  # max value has to be one up
+        if debug:
+            print('blink_latency = %.3f' % blink_latency)
 
-    # Cue validity:
-    cue_dir = (trial['cue_valid'] * 2 - 1) * this_targ_loc
-    # Logic: First, the cue validity is converted from binary [0, 1] to [-1, 1].
-    # It is then multiplied by the target location, which is either left [-1] or right [1].
-    # E.g., if the cue is valid for a target that appears on the right, cue direction is 1*1, rightward.
-    # If the cue is invalid for such a target, cue direction is -1*1, leftward.
-    cue_arrow.ori = 90 * (cue_dir - 1)
-    # Logic: If cue_dir == 1, 90 * 0 = 0, rightward orientation. If cue_dir == -1, 90 * (-2) = -180, leftward.
-    if trial['cue_valid']:
-        print('valid cue')
-    else:
-        print('invalid cue')
+        # Target location:
+        # this_targ_loc = np.random.randint(2) * 2 - 1
+        this_targ_loc = trial['targ_right'] * 2 - 1
+        if this_targ_loc > 0:
+            print('target location: Right')
+        else:
+            print('target location: Left')
+        targ.pos = (targ_off_x * this_targ_loc, 0)
 
-    # Condition string, to pass to the eye tracker, just in case:
-    cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
+        # Cue validity:
+        cue_dir = (trial['cue_valid'] * 2 - 1) * this_targ_loc
+        # Logic: First, the cue validity is converted from binary [0, 1] to [-1, 1].
+        # It is then multiplied by the target location, which is either left [-1] or right [1].
+        # E.g., if the cue is valid for a target that appears on the right, cue direction is 1*1, rightward.
+        # If the cue is invalid for such a target, cue direction is -1*1, leftward.
+        cue_arrow.ori = 90 * (cue_dir - 1)
+        # Logic: If cue_dir == 1, 90 * 0 = 0, rightward orientation. If cue_dir == -1, 90 * (-2) = -180, leftward.
+        if trial['cue_valid']:
+            print('valid cue')
+        else:
+            print('invalid cue')
+
+        # Condition string, to pass to the eye tracker, just in case:
+        cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
 
     ## Starting the eye-tracking recording.
 
@@ -400,14 +406,15 @@ for trial in trials:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
 
-    # The rest of the period without the beep, but with the cue:
-    cue_frames = int(cue_dur * frame_rate)
-    for cue_frame in range(cue_frames):
-        frame_routine()
-        cue_arrow.draw()
-        if debug:
-            # noinspection PyUnboundLocalVariable
-            trial_elapsed_frames += 1
+    if not measure:
+        # The location cue:
+        cue_frames = int(cue_dur * frame_rate)
+        for cue_frame in range(cue_frames):
+            frame_routine()
+            cue_arrow.draw()
+            if debug:
+                # noinspection PyUnboundLocalVariable
+                trial_elapsed_frames += 1
 
     # The brief period with the beep:
     beep_frames = int(beep_dur * frame_rate)
@@ -443,79 +450,89 @@ for trial in trials:
 
     ## Behavioural response: measuring the reaction time:
 
-    # Trial components pertaining to behavioural response:
-    targ_resp_given = False
-    rt_start = flip_time
+    if not measure:
+        # Trial components pertaining to behavioural response:
+        targ_resp_given = False
+        rt_start = flip_time
 
-    # Displaying the target and measuring the reaction time.
-    while not targ_resp_given:
+        # Displaying the target and measuring the reaction time.
+        while not targ_resp_given:
 
-        # Measuring the time it takes for the behavioural response:
-        flip_time = frame_routine()
+            # Measuring the time it takes for the behavioural response:
+            flip_time = frame_routine()
 
-        # Measuring time elapsed since the start of the trial:
-        trial_elapsed_t = flip_time - trial_t_start
+            # Measuring time elapsed since the start of the trial:
+            trial_elapsed_t = flip_time - trial_t_start
 
-        # Drawing the target:
-        targ.draw()
+            # Drawing the target:
+            targ.draw()
 
-        if debug:
-            # noinspection PyUnboundLocalVariable
-            trial_elapsed_frames += 1
+            if debug:
+                # noinspection PyUnboundLocalVariable
+                trial_elapsed_frames += 1
 
-        ## Monitoring for key presses:
-        arrow_keys = event.getKeys(keyList=['left', 'right'])
-        if len(arrow_keys) > 0:
-            if 'left' in arrow_keys:
-                print('subject response: Left')
-                beh_resp = -1
-                targ_resp_given = True
-            else:
-                print('subject response: Right')
-                beh_resp = 1
-                targ_resp_given = True
-            if targ_resp_given:  # this is overwritten every time any key is pressed
-                rt = flip_time - rt_start
-                if beh_resp == this_targ_loc:
-                    corr_resp = 1  # correct location response
-                    accuracy_feedback = 'Correct!'
+            ## Monitoring for key presses:
+            arrow_keys = event.getKeys(keyList=['left', 'right'])
+            if len(arrow_keys) > 0:
+                if 'left' in arrow_keys:
+                    print('subject response: Left')
+                    beh_resp = -1
+                    targ_resp_given = True
                 else:
-                    corr_resp = 0  # incorrect location response
-                    accuracy_feedback = 'INCORRECT!'
-                print('RT=%.2f correct?=%s' % (rt, corr_resp))
-                tracker.sendMessage('TRIAL_RESPONSE %.2f' % flip_time)
-                if debug:  # in debug mode, check if the frame rate looks okay
-                    # noinspection PyUnboundLocalVariable
-                    frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
+                    print('subject response: Right')
+                    beh_resp = 1
+                    targ_resp_given = True
+                if targ_resp_given:  # this is overwritten every time any key is pressed
+                    rt = flip_time - rt_start
+                    if beh_resp == this_targ_loc:
+                        corr_resp = 1  # correct location response
+                        accuracy_feedback = 'Correct!'
+                    else:
+                        corr_resp = 0  # incorrect location response
+                        accuracy_feedback = 'INCORRECT!'
+                    print('RT=%.2f correct?=%s' % (rt, corr_resp))
+                    tracker.sendMessage('TRIAL_RESPONSE %.2f' % flip_time)
+                    if debug:  # in debug mode, check if the frame rate looks okay
+                        # noinspection PyUnboundLocalVariable
+                        frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
 
-    ## Post-trial RT and accuracy
-    window.flip()
-    instr_text_stim.setText('Target Location: ' + accuracy_feedback +
-                            '\nReaction Time: %.2f' % rt +
-                            '\n\nPress the spacebar to continue')
-    instr_text_stim.draw()
-    flip_time = window.flip()
+        ## Post-trial RT and accuracy
+        window.flip()
+        instr_text_stim.setText('Target Location: ' + accuracy_feedback +
+                                '\nReaction Time: %.2f' % rt +
+                                '\n\nPress the spacebar to continue')
+        instr_text_stim.draw()
+        flip_time = window.flip()
 
-    # wait until a space key event occurs after the instructions are displayed
-    event.waitKeys(' ')
+        # wait until a space key event occurs after the instructions are displayed
+        event.waitKeys(' ')
 
-    flip_time = window.flip()
-    tracker.sendMessage('TRIAL_END %.2f' % flip_time)
+        flip_time = window.flip()
+        tracker.sendMessage('TRIAL_END %.2f' % flip_time)
 
     ## Recording the data
     # noinspection PyUnboundLocalVariable
-    output_mat[n_trials_done - 1] = {'exp_name': exp_name,
-                                     'subj': exp_info['subj'],
-                                     'cond': exp_info['cond'],
-                                     'sess': exp_info['sess'],
-                                     'trial_id': n_trials_done,
-                                     'targ_right': trial['targ_right'],
-                                     'cue_valid': trial['cue_valid'],
-                                     'blink_latency': blink_latency,
-                                     'trial_start': trial_t_start,
-                                     'trial_end': flip_time,
-                                     'corr_resp': corr_resp,
-                                     'rt': rt}
+    if not measure:
+        output_mat[n_trials_done - 1] = {'exp_name': exp_name,
+                                         'subj': exp_info['subj'],
+                                         'cond': exp_info['cond'],
+                                         'sess': exp_info['sess'],
+                                         'trial_id': n_trials_done,
+                                         'targ_right': trial['targ_right'],
+                                         'cue_valid': trial['cue_valid'],
+                                         'blink_latency': blink_latency,
+                                         'trial_start': trial_t_start,
+                                         'trial_end': flip_time,
+                                         'corr_resp': corr_resp,
+                                         'rt': rt}
+    else:
+        output_mat[n_trials_done - 1] = {'exp_name': exp_name,
+                                         'subj': exp_info['subj'],
+                                         'cond': exp_info['cond'],
+                                         'sess': exp_info['sess'],
+                                         'trial_id': n_trials_done,
+                                         'trial_start': trial_t_start,
+                                         'trial_end': flip_time}
 
     ## Stopping the eye tracking
     # send trial variables for Data Viewer integration
