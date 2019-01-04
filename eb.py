@@ -33,15 +33,15 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
 trial_n = 15  # trials per condition row; 15 gives 300 trials
 fix_1_dur = .4  # the time frame before the cue, if any
-blink_latency_min = 90  # these are in ms, because we need a random _integer_ in this range
-blink_latency_max = 350  # Note! the range is actually 240-500 ms, but 150 are already included in eyelink waiting
+blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
+blink_latency_max = 500
 # the time window for the blink - quite conservative - should include the whole blink, but is independent of
 # the blink start/end
 blink_time_window = .3
@@ -68,7 +68,7 @@ targ_off_x = 8
 targ_diam = .8
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'd', u'sess': u'1'}
+exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'm', u'sess': u'1'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 exp_name = exp_info['expt']
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
@@ -119,10 +119,14 @@ else:  # for 'd', 'v', or 'c'
 ## Input and output
 
 # condition file:
-if exp_info['cond'] == 'd':
-    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_' + exp_info['cond'] + '.xlsx')
+if not measure:
+    if exp_info['cond'] == 'd':
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_d' + '.xlsx')
+    else:
+        # same design for all non-d conditions:
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')
 else:
-    exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')  # same design for all non-d conditions
+    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
 
 # Trial handler depending on the measure or experimental stage:
 if measure:
@@ -327,7 +331,8 @@ for trial in trials:
 
     ## Randomizing variables and assigning the conditions:
     if measure:
-        blink_latency = blink_latency_max
+        blink_latency = blink_latency_max / 1000
+        cond_str = ''
     else:
         # Randomize the duration of the post-cue fixation & converting to sec:
         blink_latency = np.random.randint(blink_latency_min,
@@ -426,6 +431,7 @@ for trial in trials:
             trial_elapsed_frames += 1
 
     # Blink latency = the fixation period after the beep:
+    print('blink latency phase')
     blink_latency_frames = int(blink_latency * frame_rate)
     for blink_latency_frame in range(blink_latency_frames):
         flip_time = frame_routine()
@@ -434,6 +440,7 @@ for trial in trials:
             trial_elapsed_frames += 1
 
     # Real or simulated blink follow the same timeline:
+    print('blink period phase')
     blink_time_period_frames = int(blink_time_window * frame_rate)
     if shutters:
         # noinspection PyUnboundLocalVariable
@@ -450,6 +457,7 @@ for trial in trials:
 
     ## Behavioural response: measuring the reaction time:
 
+    print('response phase')
     if not measure:
         # Trial components pertaining to behavioural response:
         targ_resp_given = False
@@ -496,19 +504,24 @@ for trial in trials:
                         # noinspection PyUnboundLocalVariable
                         frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
 
-        ## Post-trial RT and accuracy
-        window.flip()
+
+    ## Post-trial RT and accuracy
+    print('post-trial phase')
+    window.flip()
+    if not measure:
         instr_text_stim.setText('Target Location: ' + accuracy_feedback +
                                 '\nReaction Time: %.2f' % rt +
                                 '\n\nPress the spacebar to continue')
-        instr_text_stim.draw()
-        flip_time = window.flip()
+    else:
+        instr_text_stim.setText('Press the spacebar to continue')
+    instr_text_stim.draw()
+    flip_time = window.flip()
 
-        # wait until a space key event occurs after the instructions are displayed
-        event.waitKeys(' ')
+    # wait until a space key event occurs after the instructions are displayed
+    event.waitKeys(' ')
 
-        flip_time = window.flip()
-        tracker.sendMessage('TRIAL_END %.2f' % flip_time)
+    flip_time = window.flip()
+    tracker.sendMessage('TRIAL_END %.2f' % flip_time)
 
     ## Recording the data
     # noinspection PyUnboundLocalVariable
