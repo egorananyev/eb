@@ -22,7 +22,7 @@ code.r{
 ```{r set-options, message=F}
 options(width=100)
 dropbox_dir = '/Users/Egor/Dropbox/' # Mac / Toshi
-dropbox_dir = '/Users/egora/Dropbox/' # Mac / Toshi
+# dropbox_dir = '/Users/egora/Dropbox/' # Shocky
 data_dir = paste0(dropbox_dir, 'Projects/eb/data')
 all_data_dirs = list.dirs(data_dir)[-1]  # excluding the first (base) directory
 # TEMP: for now, just taking the last directory:

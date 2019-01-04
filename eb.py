@@ -422,6 +422,7 @@ for trial in trials:
                 trial_elapsed_frames += 1
 
     # The brief period with the beep:
+    tracker.sendMessage('BEEP_START %.2f' % flip_time)
     beep_frames = int(beep_dur * frame_rate)
     for beep_frame in range(beep_frames):
         frame_routine()
@@ -429,6 +430,7 @@ for trial in trials:
         if debug:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
+    tracker.sendMessage('BEEP_END %.2f' % flip_time)
 
     # Blink latency = the fixation period after the beep:
     print('blink latency phase')
