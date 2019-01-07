@@ -406,7 +406,7 @@ for trial in trials:
     # Fixation cross:
     fix_1_frames = int(fix_1_dur * frame_rate)
     for fix_1_frame in range(fix_1_frames):
-        frame_routine()
+        flip_time = frame_routine()
         if debug:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
@@ -425,7 +425,7 @@ for trial in trials:
     tracker.sendMessage('BEEP_START %.2f' % flip_time)
     beep_frames = int(beep_dur * frame_rate)
     for beep_frame in range(beep_frames):
-        frame_routine()
+        flip_time = frame_routine()
         beep.play()
         if debug:
             # noinspection PyUnboundLocalVariable
