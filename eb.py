@@ -445,6 +445,7 @@ for trial in trials:
     print('blink period phase')
     blink_time_period_frames = int(blink_time_window * frame_rate)
     if shutters:
+        tracker.sendMessage('SHUTTER_START %.2f' % flip_time)
         # noinspection PyUnboundLocalVariable
         ser.write('z')
         print('Closed the goggles.')
@@ -454,6 +455,7 @@ for trial in trials:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
     if shutters:
+        tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
         ser.write('c')
         print('Opened the goggles.')
 
