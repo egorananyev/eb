@@ -157,6 +157,16 @@ out_file_path = sess_dir + os.sep + out_file_name + '.csv'
 # output matrix:
 output_mat = {}
 
+## Shutters condition also estimates blink duration to simulate physiological blinks
+if shutters:
+    all_sess_dirs = os.listdir(subj_dir + os.sep + 'cond-m')
+    last_sess_dir = all_sess_dirs[len(all_sess_dirs-1)]
+    blink_params = pd.read_csv(subj_dir + os.sep + 'cond-m' + os.sep + last_sess_dir + os.sep + 'blink_params.csv')
+    blink_dur_ave = np.mean(blink_params['blink_duration'])
+    blink_dur_std = np.std(blink_params['blink_duration'])
+    # The later functions will run as follows:
+    # np.random.normal(blink_dur_ave, blink_dur_std)
+
 ## EyeLink setup
 if not dummy_mode:
     tracker = pylink.EyeLink('100.1.1.1')
@@ -278,7 +288,7 @@ def exit_routine():
         data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'trial_start', 'trial_end']
     else:
         data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
-                        'blink_latency', 'trial_start', 'trial_end', 'corr_resp', 'rt']
+                        'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'corr_resp', 'rt']
     pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
     print('output file path is ' + out_file_path)
 
@@ -341,7 +351,6 @@ for trial in trials:
             print('blink_latency = %.3f' % blink_latency)
 
         # Target location:
-        # this_targ_loc = np.random.randint(2) * 2 - 1
         this_targ_loc = trial['targ_right'] * 2 - 1
         if this_targ_loc > 0:
             print('target location: Right')
@@ -361,6 +370,12 @@ for trial in trials:
             print('valid cue')
         else:
             print('invalid cue')
+
+        if shutters:
+            # noinspection PyUnboundLocalVariable
+            shutter_dur = np.random.normal(blink_dur_ave, blink_dur_std)
+        else:
+            shutter_dur = 0
 
         # Condition string, to pass to the eye tracker, just in case:
         cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
@@ -445,19 +460,27 @@ for trial in trials:
     print('blink period phase')
     blink_time_period_frames = int(blink_time_window * frame_rate)
     if shutters:
+        # noinspection PyUnboundLocalVariable
+        shutter_frames = int(shutter_dur * frame_rate)
         tracker.sendMessage('SHUTTER_START %.2f' % flip_time)
         # noinspection PyUnboundLocalVariable
         ser.write('z')
+        shutters_shut = True
         print('Closed the goggles.')
     for blink_time_period_frame in range(blink_time_period_frames):
         flip_time = frame_routine()
         if debug:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
-    if shutters:
-        tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
-        ser.write('c')
-        print('Opened the goggles.')
+        if shutters:
+            # noinspection PyUnboundLocalVariable
+            if shutters_shut:
+                # noinspection PyUnboundLocalVariable
+                if blink_time_period_frame > shutter_frames:
+                    tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
+                    ser.write('c')
+                    shutters_shut = False
+                    print('Opened the goggles.')
 
     ## Behavioural response: measuring the reaction time:
 
@@ -496,6 +519,7 @@ for trial in trials:
                     targ_resp_given = True
                 if targ_resp_given:  # this is overwritten every time any key is pressed
                     rt = flip_time - rt_start
+                    # noinspection PyUnboundLocalVariable
                     if beh_resp == this_targ_loc:
                         corr_resp = 1  # correct location response
                         accuracy_feedback = 'Correct!'
@@ -508,18 +532,18 @@ for trial in trials:
                         # noinspection PyUnboundLocalVariable
                         frame_skip_check(trial_elapsed_t, trial_elapsed_frames)
 
-
     ## Post-trial RT and accuracy
     print('post-trial phase')
     window.flip()
     if not measure:
+        # noinspection PyUnboundLocalVariable
         instr_text_stim.setText('Target Location: ' + accuracy_feedback +
                                 '\nReaction Time: %.2f' % rt +
                                 '\n\nPress the spacebar to continue')
     else:
         instr_text_stim.setText('Press the spacebar to continue')
     instr_text_stim.draw()
-    flip_time = window.flip()
+    window.flip()
 
     # wait until a space key event occurs after the instructions are displayed
     event.waitKeys(' ')
@@ -530,6 +554,7 @@ for trial in trials:
     ## Recording the data
     # noinspection PyUnboundLocalVariable
     if not measure:
+        # noinspection PyUnboundLocalVariable
         output_mat[n_trials_done - 1] = {'exp_name': exp_name,
                                          'subj': exp_info['subj'],
                                          'cond': exp_info['cond'],
@@ -538,6 +563,7 @@ for trial in trials:
                                          'targ_right': trial['targ_right'],
                                          'cue_valid': trial['cue_valid'],
                                          'blink_latency': blink_latency,
+                                         'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,
                                          'trial_end': flip_time,
                                          'corr_resp': corr_resp,
