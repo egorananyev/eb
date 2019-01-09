@@ -160,7 +160,7 @@ output_mat = {}
 ## Shutters condition also estimates blink duration to simulate physiological blinks
 if shutters:
     all_sess_dirs = os.listdir(subj_dir + os.sep + 'cond-m')
-    last_sess_dir = all_sess_dirs[len(all_sess_dirs-1)]
+    last_sess_dir = all_sess_dirs[len(all_sess_dirs)-1]
     blink_params = pd.read_csv(subj_dir + os.sep + 'cond-m' + os.sep + last_sess_dir + os.sep + 'blink_params.csv')
     blink_dur_ave = np.mean(blink_params['blink_duration'])
     blink_dur_std = np.std(blink_params['blink_duration'])
