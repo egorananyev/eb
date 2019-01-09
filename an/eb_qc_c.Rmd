@@ -1,7 +1,7 @@
 ---
-title: "[eb1] Measurement - Quality Control"
+title: "[eb1] Condition: Control - Quality Control"
 author: "Egor Ananyev"
-date: "2019-01-04"
+date: "2019-01-09"
 output:
     html_document:
         toc: true
@@ -21,11 +21,17 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-dropbox_dir = '/Users/Egor/Dropbox/' # Mac / Toshi
-# dropbox_dir = '/Users/egora/Dropbox/' # Shocky
-data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb1')
+##### Variables: #####
 this_subj = 'subj-00'
-this_cond = 'cond-m'
+shocky = F
+######################
+if(shocky){
+    dropbox_dir = '/Users/egora/Dropbox/' # Shocky
+}else{
+    dropbox_dir = '/Users/Egor/Dropbox/' # Mac / Toshi
+}
+data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb1')
+this_cond = 'cond-c'
 cond_dir = paste(data_dir, this_subj, this_cond, sep='/')
 all_data_dirs = list.dirs(cond_dir)[-1]  # excluding the first (base) directory
 # TEMP: for now, just taking the last directory:
@@ -88,16 +94,10 @@ df_trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5
 colnames(df_trials) = c('start_sample', 'start_time', 'end_sample', 'end_time')
 print(head(df_trials))
 # Labeling trials in the 'samples' data frame
-df_samples$time = 0
-df_samples$trial = 0
 for(cur_trial in 1:nrow(df_trials)){
     df_samples$trial[df_samples$sample >= 
                          df_trials$start_sample[cur_trial]] = cur_trial
-    df_samples$time[df_samples$trial==cur_trial] = 
-        (df_samples$sample[df_samples$trial==cur_trial] - 
-                           df_trials$start_sample[cur_trial]) * 0.001
 }
-print(head(df_samples))
 ```
 
 ## Beep times
@@ -106,16 +106,7 @@ print(head(df_samples))
 df_beeps = data.frame(start=dfy(raw_data[grepl('BEEP_START', raw_data)], c(3,5), 2),
                        end=dfy(raw_data[grepl('BEEP_END', raw_data)], c(3,5), 2))
 colnames(df_beeps) = c('start_sample', 'start_time', 'end_sample', 'end_time')
-df_beeps$trial_start_time = 0
-df_beeps$trial_end_time = 0
-df_beeps$trial = as.numeric(rownames(df_beeps))
-for(cur_trial in 1:nrow(df_trials)){
-    df_beeps$trial_start_time[df_beeps$trial==cur_trial] = 
-        df_beeps$start_time[df_beeps$trial==cur_trial] - df_trials$start_time[cur_trial]
-    df_beeps$trial_end_time[df_beeps$trial==cur_trial] = 
-        df_beeps$end_time[df_beeps$trial==cur_trial] - df_trials$start_time[cur_trial]
-}
-print(df_beeps)
+print(head(df_beeps))
 ```
 
 ## Blank events
@@ -124,17 +115,8 @@ print(df_beeps)
 df_blanks = dfy(raw_data[grepl('^EBLINK', raw_data)], c(6,2,3), 1)
 colnames(df_blanks) = c('start_sample', 'end_sample', 'tot_samples')
 # Labeling trials in the 'blanks' data frame
-df_blanks$trial = 0
-df_blanks$start_time = 0
-df_blanks$end_time = 0
 for(cur_trial in 1:nrow(df_trials)){
     df_blanks$trial[df_blanks$start_sample >= df_trials$start_sample[cur_trial]] = cur_trial
-    df_blanks$start_time[df_blanks$trial==cur_trial] =
-        (df_blanks$start_sample[df_blanks$trial==cur_trial] - df_trials$start_sample[cur_trial]) *
-        0.001
-    df_blanks$end_time[df_blanks$trial==cur_trial] =
-        (df_blanks$end_sample[df_blanks$trial==cur_trial] - df_trials$start_sample[cur_trial]) *
-        0.001
 }
 print(head(df_blanks))
 # TODO: the blank durations tend to be overestimated by 2 units
@@ -146,7 +128,7 @@ library(ggplot2)
 # For simplicity, only visualizing the right eye at the moment:
 ylims = c(0, 1000)
 for(cur_trial in 1:nrow(df_trials)){
-    p = ggplot(df_samples[df_samples$trial==cur_trial,], aes(x=time))
+    p = ggplot(df_samples[df_samples$trial==cur_trial,], aes(x=sample))
     p = p + geom_line(aes(y=yr, colour='Gaze'))
     p = p + geom_line(aes(y=psr/5, colour='Pupil'))
     p = p + scale_y_continuous(sec.axis = sec_axis(~.*5, name='Pupil Diameter (a.u.)'),
@@ -159,14 +141,13 @@ for(cur_trial in 1:nrow(df_trials)){
         cur_blanks = df_blanks[df_blanks$trial==cur_trial,]
         for(cur_blank in 1:numof_blanks){
             p = p + geom_rect(data=cur_blanks[cur_blank,], inherit.aes=F, 
-                              aes(xmin=start_time, xmax=end_time, 
+                              aes(xmin=start_sample, xmax=end_sample, 
                                   ymin=ylims[1], ymax=ylims[2]),
                               color='transparent', fill='purple', alpha=.3)
         }
     }
     p = p + geom_rect(data=df_beeps[cur_trial,], inherit.aes=F, 
-                      aes(xmin=trial_start_time, xmax=trial_end_time, 
-                          ymin=ylims[1], ymax=ylims[2]),
+                      aes(xmin=start_sample, xmax=end_sample, ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='orange', alpha=.3)
     p = p + labs(y='Gaze Y-Position', x='Time', colour='Parameter')
     p = p + ggtitle(paste('Trial #', as.character(cur_trial))) + theme_bw()
@@ -182,7 +163,7 @@ for(cur_trial in 1:nrow(df_trials)){
 ```{r}
 trials_to_exclude = c(4:5)
 # Logging which trials are marked for exclusion:
-write.table(trials_to_exclude, paste(this_data_dir, 'exclude_trials.csv', sep='/'),
+write.table(trials_to_exclude, paste(this_data_dir, 'exclude.csv', sep='/'),
             row.names=F, col.names=F, sep=',')
 # Tagging trial numbers in a separate column:
 df_beeps$trial = as.numeric(rownames(df_beeps))
@@ -203,5 +184,5 @@ df_aggr$blink_duration = df_aggr$tot_samples.x * df_aggr$sample_per_s
 select_cols = c('trial','latency_time','blink_duration')
 sub_df = df_aggr[,select_cols]
 write.csv(sub_df, paste(this_data_dir, 'blink_params.csv', sep='/'), row.names=F)
-print(sub_df)
+print(head(sub_df))
 ```
