@@ -20,7 +20,7 @@ code.r{
 
 # Data input and parsing
 ```{r set-options, message=F}
-options(width=100)
+options(width=80)
 dropbox_dir = '/Users/Egor/Dropbox/' # Mac / Toshi
 # dropbox_dir = '/Users/egora/Dropbox/' # Shocky
 data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb1')
@@ -86,7 +86,24 @@ print(head(df_samples))
 df_trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5), 2),
                        end=dfy(raw_data[grepl('TRIAL_END', raw_data)], c(3,5), 2))
 colnames(df_trials) = c('start_sample', 'start_time', 'end_sample', 'end_time')
+df_trials$tot_samples = df_trials$end_sample - df_trials$start_sample
+df_trials$tot_time = df_trials$end_time - df_trials$start_time
+df_trials$samples_per_s = df_trials$tot_samples / df_trials$tot_time
 print(head(df_trials))
+```
+
+```{r}
+# Storing the start and end beep times
+df_beeps = data.frame(start=dfy(raw_data[grepl('BEEP_START', raw_data)], c(3,5), 2),
+                       end=dfy(raw_data[grepl('BEEP_END', raw_data)], c(3,5), 2))
+colnames(df_beeps) = c('start_sample', 'start_time', 'end_sample', 'end_time')
+df_beeps$tot_samples = df_beeps$end_sample - df_beeps$start_sample
+df_beeps$tot_time = df_beeps$end_time - df_beeps$start_time
+df_beeps$samples_per_s = df_beeps$tot_samples / df_beeps$tot_time
+print(head(df_beeps))
+```
+
+```{r}
 # Labeling trials in the 'samples' data frame
 df_samples$time = 0
 df_samples$trial = 0
@@ -102,10 +119,6 @@ print(head(df_samples))
 
 ## Beep times
 ```{r}
-# Storing the start and end beep times
-df_beeps = data.frame(start=dfy(raw_data[grepl('BEEP_START', raw_data)], c(3,5), 2),
-                       end=dfy(raw_data[grepl('BEEP_END', raw_data)], c(3,5), 2))
-colnames(df_beeps) = c('start_sample', 'start_time', 'end_sample', 'end_time')
 df_beeps$trial_start_time = 0
 df_beeps$trial_end_time = 0
 df_beeps$trial = as.numeric(rownames(df_beeps))
@@ -168,14 +181,14 @@ for(cur_trial in 1:nrow(df_trials)){
                       aes(xmin=trial_start_time, xmax=trial_end_time, 
                           ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='orange', alpha=.3)
+    p = p + geom_rect(data=df_beeps[cur_trial,], inherit.aes=F, 
+                      aes(xmin=trial_end_time+.5, xmax=trial_end_time+.8, 
+                          ymin=ylims[1], ymax=ylims[2]),
+                      color='transparent', fill='yellow', alpha=.3)
     p = p + labs(y='Gaze Y-Position', x='Time', colour='Parameter')
     p = p + ggtitle(paste('Trial #', as.character(cur_trial))) + theme_bw()
     print(p)
 }
-    # p = ggplot(df_samples[df_samples$trial==cur_trial,], aes(x=time, y=yr)) + 
-    #     geom_line() + ylim(350, 600) + geom_rect(data=df_blanks[cur_trial,], inherit.aes=F, 
-    #                                              aes(xmin=start, xmax=end, ymin=350, ymax=600),
-    #                                              color='transparent', fill='red', alpha=.3)
 ```
 
 # Trial exclusions
