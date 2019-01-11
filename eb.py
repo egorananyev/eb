@@ -33,13 +33,14 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = False
-dummy_mode = False
+toshi = True
+dummy_mode = True
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
 trial_n = 15  # trials per condition row; 15 gives 300 trials
-fix_1_dur = .4  # the time frame before the cue, if any
+cue_delay_min = 300  # the time frame before the location/blink cue
+cue_delay_max = 800
 blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
 blink_latency_max = 500
 # the time window for the blink - quite conservative - should include the whole blink, but is independent of
@@ -62,7 +63,6 @@ fix_size = 0.8
 cue_size = .8
 cue_off_y = 1
 cue_dur = .2
-beep_dur = .05
 # target:
 targ_off_x = 8
 targ_diam = .8
@@ -98,22 +98,23 @@ else:
         voluntary = True
     if exp_info['cond'] == 'a':
         import serial
+
         shutters = True
         ser = serial.Serial('/dev/ttyACM0', 9600)
         ser.write('c')  # both sides clear
 
 # Handling condition instructions:
 if measure:
-    cond_instr = 'Please blink immediately after each beep.'
+    cond_instr = 'Please blink immediately after seeing the double arrow.'
 elif exp_info['cond'] in ['c', 'a']:
     cond_instr = 'Please do the following:\n' \
                  '(1) DO NOT BLINK during the trial - blink after the trial instead;\n' \
-                 '(2) Pay attention to the arrow and\n' \
+                 '(2) Pay attention to the direction of the arrow and\n' \
                  '(3) Indicate the location of the target circle as quickly as possible after the blink.'
 else:  # for 'd', 'v', or 'c'
     cond_instr = 'Please do the following:\n' \
-                 '(1) Blink immediately after a beep;\n' \
-                 '(2) Pay attention to the arrow and\n' \
+                 '(1) Blink immediately after you see an arrow;\n' \
+                 '(2) Pay attention to the direction of the arrow and\n' \
                  '(3) Indicate the location of the target circle as quickly as possible after the blink.'
 
 ## Input and output
@@ -160,7 +161,7 @@ output_mat = {}
 ## Shutters condition also estimates blink duration to simulate physiological blinks
 if shutters:
     all_sess_dirs = os.listdir(subj_dir + os.sep + 'cond-m')
-    last_sess_dir = all_sess_dirs[len(all_sess_dirs)-1]
+    last_sess_dir = all_sess_dirs[len(all_sess_dirs) - 1]
     blink_params = pd.read_csv(subj_dir + os.sep + 'cond-m' + os.sep + last_sess_dir + os.sep + 'blink_params.csv')
     blink_dur_ave = np.mean(blink_params['blink_duration'])
     blink_dur_std = np.std(blink_params['blink_duration'])
@@ -207,15 +208,14 @@ instr_text = cond_instr + space_text
 instr_text_stim = visual.TextStim(window, text=instr_text, height=.8)
 fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, height=fix_size)
 
-# auditory tone (for blink condition):
-print('using %s (with %s) for sounds' % (sound.audioLib, sound.audioDriver))
-beep = sound.Sound('A', octave=5, sampleRate=44100, secs=beep_dur, stereo=True)
-beep.setVolume(.1)  # this isn't needed in Aaron's paradigm -- the sound is softer
-
 # cue:
 arrow_vert = [(.5, 0), (0, .3), (0, .1), (-.5, .1), (-.5, -.1), (0, -.1), (0, -.3)]
 cue_arrow = visual.ShapeStim(window, vertices=arrow_vert, fillColor='black', size=cue_size, lineColor='black',
                              pos=(0, cue_off_y))
+double_arrow_vert = [(.5, 0), (.2, .3), (.2, .1), (-.2, .1), (-.2, .3), (-.5, 0),
+                     (-.2, -.3), (-.2, -.1), (.2, -.1), (.2, -.3)]
+double_arrow = visual.ShapeStim(window, vertices=double_arrow_vert, fillColor='black', size=cue_size, lineColor='black',
+                                pos=(0, cue_off_y))
 
 # target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
@@ -233,10 +233,10 @@ tracker.setOfflineMode()
 tracker.sendCommand('sample_rate 500')
 # inform the tracker the resolution of the subject display
 # [see Eyelink Installation Guide, Section 8.4: Customizing Your PHYSICAL.INI Settings ]
-tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
+tracker.sendCommand("screen_pixel_coords = 0 0 %d %d" % (dr[0] - 1, dr[1] - 1))
 # save display resolution in EDF data file for Data Viewer integration purposes
 # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
-tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dr[0]-1, dr[1]-1))
+tracker.sendMessage("DISPLAY_COORDS = 0 0 %d %d" % (dr[0] - 1, dr[1] - 1))
 # specify the calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 tracker.sendCommand("calibration_type = HV5")  # tracker.setCalibrationType('HV9') also works, see the Pylink manual
 # Set the tracker to parse Events using "GAZE" (or "HREF") data
@@ -284,13 +284,16 @@ def exit_routine():
         print('Closed the goggles.')
 
     # Behavioural data output:
-    if measure:
-        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'trial_start', 'trial_end']
+    if not output_mat:  # means that the dictionary is empty
+        print('the output file is empty')
     else:
-        data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'targ_right', 'cue_valid',
-                        'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'corr_resp', 'rt']
-    pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
-    print('output file path is ' + out_file_path)
+        if measure:
+            data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
+        else:
+            data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right', 'cue_valid',
+                            'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'corr_resp', 'rt']
+        pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
+        print('output file path is ' + out_file_path)
 
     # Say goodbye:
     window.flip()
@@ -340,6 +343,7 @@ for trial in trials:
     print('======TRIAL#' + str(n_trials_done) + '======')
 
     ## Randomizing variables and assigning the conditions:
+    cue_delay = np.random.randint(cue_delay_min, cue_delay_max + 1) / 1000
     if measure:
         blink_latency = blink_latency_max / 1000
         cond_str = ''
@@ -389,12 +393,12 @@ for trial in trials:
     # Starting the recording:
     # take the tracker offline
     tracker.setOfflineMode()
+    tracker.sendMessage('PRE_PUMP %.2f' % flip_time)
     pylink.pumpDelay(50)
 
     # send the standard "TRIALID" message to mark the start of a trial
     # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
     tracker.sendMessage('TRIALID %02d' % n_trials_done)
-    tracker.sendMessage('TRIAL_START %.2f' % flip_time)
 
     # record_status_message : show some info on the host PC
     tracker.sendCommand("record_status_message 'Condition: %s'" % cond_str)
@@ -403,7 +407,7 @@ for trial in trials:
     if drift_check:
         # noinspection PyBroadException
         try:
-            err = tracker.doDriftCorrect(dr[0]/2, dr[1]/2, 1, 1)
+            err = tracker.doDriftCorrect(dr[0] / 2, dr[1] / 2, 1, 1)
         except:
             tracker.doTrackerSetup()
         # read out calibration/drift-correction results:
@@ -414,41 +418,36 @@ for trial in trials:
     pylink.pumpDelay(100)  # wait for 100 ms to make sure data of interest is recorded
 
     ## Cycling through the trial phases:
+    flip_time = window.flip()
     trial_t_start = flip_time
+    # send trial initiation message only post-pump delay:
+    tracker.sendMessage('TRIAL_START %.2f' % flip_time)
     if debug:
         trial_elapsed_frames = 0  # counting frames for frame skip test
 
     # Fixation cross:
-    fix_1_frames = int(fix_1_dur * frame_rate)
+    fix_1_frames = int(cue_delay * frame_rate)
     for fix_1_frame in range(fix_1_frames):
         flip_time = frame_routine()
         if debug:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
 
-    if not measure:
-        # The location cue:
-        cue_frames = int(cue_dur * frame_rate)
-        for cue_frame in range(cue_frames):
-            frame_routine()
-            cue_arrow.draw()
-            if debug:
-                # noinspection PyUnboundLocalVariable
-                trial_elapsed_frames += 1
-
-    # The brief period with the beep:
-    tracker.sendMessage('BEEP_START %.2f' % flip_time)
-    beep_frames = int(beep_dur * frame_rate)
-    for beep_frame in range(beep_frames):
+    # The location/blink cue:
+    tracker.sendMessage('CUE_ONSET %.2f' % flip_time)
+    cue_frames = int(cue_dur * frame_rate)
+    for cue_frame in range(cue_frames):
         flip_time = frame_routine()
-        beep.play()
+        if not measure:
+            cue_arrow.draw()
+        else:
+            double_arrow.draw()
         if debug:
             # noinspection PyUnboundLocalVariable
             trial_elapsed_frames += 1
-    tracker.sendMessage('BEEP_END %.2f' % flip_time)
 
-    # Blink latency = the fixation period after the beep:
-    print('blink latency phase')
+    # Blink latency = the fixation period after the cue:
+    tracker.sendMessage('BLINK_LATENCY_ONSET %.2f' % flip_time)
     blink_latency_frames = int(blink_latency * frame_rate)
     for blink_latency_frame in range(blink_latency_frames):
         flip_time = frame_routine()
@@ -457,8 +456,8 @@ for trial in trials:
             trial_elapsed_frames += 1
 
     # Real or simulated blink follow the same timeline:
-    print('blink period phase')
     blink_time_period_frames = int(blink_time_window * frame_rate)
+    tracker.sendMessage('BLINK_WINDOW_ONSET %.2f' % flip_time)
     if shutters:
         # noinspection PyUnboundLocalVariable
         shutter_frames = int(shutter_dur * frame_rate)
@@ -484,7 +483,7 @@ for trial in trials:
 
     ## Behavioural response: measuring the reaction time:
 
-    print('response phase')
+    tracker.sendMessage('RESPONSE_ONSET %.2f' % flip_time)
     if not measure:
         # Trial components pertaining to behavioural response:
         targ_resp_given = False
@@ -560,6 +559,7 @@ for trial in trials:
                                          'cond': exp_info['cond'],
                                          'sess': exp_info['sess'],
                                          'trial_id': n_trials_done,
+                                         'cue_delay': cue_delay,
                                          'targ_right': trial['targ_right'],
                                          'cue_valid': trial['cue_valid'],
                                          'blink_latency': blink_latency,
@@ -574,6 +574,7 @@ for trial in trials:
                                          'cond': exp_info['cond'],
                                          'sess': exp_info['sess'],
                                          'trial_id': n_trials_done,
+                                         'cue_delay': cue_delay,
                                          'trial_start': trial_t_start,
                                          'trial_end': flip_time}
 
