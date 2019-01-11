@@ -33,8 +33,8 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
