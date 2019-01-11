@@ -36,7 +36,9 @@ file_path = paste(this_data_dir, file_name, sep='/')
 
 ```{r}
 # Read in the data:
-raw_data = readLines(gzfile(file_path))  # gzfile unpacks .gz
+raw_file = gzfile(file_path)
+raw_data = readLines(raw_file)  # gzfile unpacks .gz
+close(raw_file)
 
 # This function converts a specific chunk of raw data into a numeric data frame.
 dfy = function(df_in, cols, space_col=0){
@@ -73,84 +75,77 @@ dfy = function(df_in, cols, space_col=0){
 ## Samples
 ```{r}
 # extracting lines that start with numbers:
-samples = raw_data[grepl('^[0-9]', raw_data)]
+samples_raw = raw_data[grepl('^[0-9]', raw_data)]
 # creating a proper data frame:
-df_samples = dfy(samples, 1:4, 0)  # we only need 4 cols, and no columns are space-delimited
-colnames(df_samples) = c('sample', 'xr', 'yr', 'psr')
-print(head(df_samples))
+samples = dfy(samples_raw, 1:4, 0)  # we only need 4 cols, and no columns are space-delimited
+colnames(samples) = c('sample', 'xr', 'yr', 'psr')
+print(head(samples))
 ```
 
-## Trial times
+## Once-per-trial events
 ```{r}
-# Storing the start and end trials times for later labeling
-df_trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5), 2),
+# Storing the start and end trials times:
+trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5), 2),
                        end=dfy(raw_data[grepl('TRIAL_END', raw_data)], c(3,5), 2))
-colnames(df_trials) = c('start_sample', 'start_time', 'end_sample', 'end_time')
-df_trials$tot_samples = df_trials$end_sample - df_trials$start_sample
-df_trials$tot_time = df_trials$end_time - df_trials$start_time
-df_trials$samples_per_s = df_trials$tot_samples / df_trials$tot_time
-print(head(df_trials))
+# Adding cue onset time:
+trials = cbind(trials, 
+               data.frame(cue_onset=dfy(raw_data[grepl('CUE_ONSET', raw_data)], c(3,5), 2)))
+# Adding blink latency onset time:
+trials = cbind(trials, 
+               data.frame(blink_latency=dfy(raw_data[grepl('BLINK_LATENCY_ONSET', raw_data)], 
+                                            c(3,5), 2)))
+# Adding blink window onset time:
+trials = cbind(trials, 
+               data.frame(blink_window=dfy(raw_data[grepl('BLINK_WINDOW_ONSET', raw_data)], 
+                                            c(3,5), 2)))
+# Adding response onset time:
+trials = cbind(trials, 
+               data.frame(blink_window=dfy(raw_data[grepl('RESPONSE_ONSET', raw_data)], 
+                                            c(3,5), 2)))
+# Renaming columns to prettier variable names:
+colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
+                     'trial_sample_end', 'trial_time_end',
+                     'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
+                     'blink_window_sample', 'blink_window_time', 'resp_sample', 'resp_time')
+# For sample rate check, the last column should be all 1000 (corresponding to Hz):
+trials$tot_trial_samples = trials$trial_sample_end - trials$trial_sample_beg
+trials$tot_trial_time = trials$trial_time_end - trials$trial_time_beg
+trials$samples_per_s = trials$tot_trial_samples / trials$tot_trial_time
+print(trials)
 ```
 
-```{r}
-# Storing the start and end beep times
-df_beeps = data.frame(start=dfy(raw_data[grepl('BEEP_START', raw_data)], c(3,5), 2),
-                       end=dfy(raw_data[grepl('BEEP_END', raw_data)], c(3,5), 2))
-colnames(df_beeps) = c('start_sample', 'start_time', 'end_sample', 'end_time')
-df_beeps$tot_samples = df_beeps$end_sample - df_beeps$start_sample
-df_beeps$tot_time = df_beeps$end_time - df_beeps$start_time
-df_beeps$samples_per_s = df_beeps$tot_samples / df_beeps$tot_time
-print(head(df_beeps))
-```
-
+## Labeling samples
 ```{r}
 # Labeling trials in the 'samples' data frame
-df_samples$time = 0
-df_samples$trial = 0
-for(cur_trial in 1:nrow(df_trials)){
-    df_samples$trial[df_samples$sample >= 
-                         df_trials$start_sample[cur_trial]] = cur_trial
-    df_samples$time[df_samples$trial==cur_trial] = 
-        (df_samples$sample[df_samples$trial==cur_trial] - 
-                           df_trials$start_sample[cur_trial]) * 0.001
+samples$time = 0
+samples$trial = 0
+for(cur_trial in 1:nrow(trials)){
+    samples$trial[samples$sample>=trials$trial_sample_beg[cur_trial]] = cur_trial
+    samples$time[samples$trial==cur_trial] = (samples$sample[samples$trial==cur_trial] - 
+                           trials$trial_sample_beg[cur_trial]) * 0.001
 }
-print(head(df_samples))
-```
-
-## Beep times
-```{r}
-df_beeps$trial_start_time = 0
-df_beeps$trial_end_time = 0
-df_beeps$trial = as.numeric(rownames(df_beeps))
-for(cur_trial in 1:nrow(df_trials)){
-    df_beeps$trial_start_time[df_beeps$trial==cur_trial] = 
-        df_beeps$start_time[df_beeps$trial==cur_trial] - df_trials$start_time[cur_trial]
-    df_beeps$trial_end_time[df_beeps$trial==cur_trial] = 
-        df_beeps$end_time[df_beeps$trial==cur_trial] - df_trials$start_time[cur_trial]
-}
-print(df_beeps)
+print(head(samples))
 ```
 
 ## Blank events
 ```{r}
 # Extracting the lines with blank ends, as they include blank start, end, and duration:
-df_blanks = dfy(raw_data[grepl('^EBLINK', raw_data)], c(6,2,3), 1)
-colnames(df_blanks) = c('start_sample', 'end_sample', 'tot_samples')
+blanks = dfy(raw_data[grepl('^EBLINK', raw_data)], c(6,2,3), 1)
+colnames(blanks) = c('blank_sample_beg', 'blank_sample_end', 'tot_blink_samples')
 # Labeling trials in the 'blanks' data frame
-df_blanks$trial = 0
-df_blanks$start_time = 0
-df_blanks$end_time = 0
-for(cur_trial in 1:nrow(df_trials)){
-    df_blanks$trial[df_blanks$start_sample >= df_trials$start_sample[cur_trial]] = cur_trial
-    df_blanks$start_time[df_blanks$trial==cur_trial] =
-        (df_blanks$start_sample[df_blanks$trial==cur_trial] - df_trials$start_sample[cur_trial]) *
-        0.001
-    df_blanks$end_time[df_blanks$trial==cur_trial] =
-        (df_blanks$end_sample[df_blanks$trial==cur_trial] - df_trials$start_sample[cur_trial]) *
-        0.001
+blanks$trial = 0
+blanks$blank_time_beg = 0
+blanks$blank_time_end = 0
+for(cur_trial in 1:nrow(trials)){
+    blanks$trial[blanks$blank_sample_beg>=trials$trial_sample_beg[cur_trial]] = cur_trial
+    blanks$blank_time_beg[blanks$trial==cur_trial] =
+        (blanks$blank_sample_beg[blanks$trial==cur_trial] - 
+           trials$trial_sample_beg[cur_trial]) * 0.001
+    blanks$blank_time_end[blanks$trial==cur_trial] =
+        (blanks$blank_sample_end[blanks$trial==cur_trial] - 
+           trials$trial_sample_beg[cur_trial]) * 0.001
 }
-print(head(df_blanks))
-# TODO: the blank durations tend to be overestimated by 2 units
+print(head(blanks))
 ```
 
 # Visualization for QC
@@ -158,33 +153,37 @@ print(head(df_blanks))
 library(ggplot2)
 # For simplicity, only visualizing the right eye at the moment:
 ylims = c(0, 1000)
-for(cur_trial in 1:nrow(df_trials)){
-    p = ggplot(df_samples[df_samples$trial==cur_trial,], aes(x=time))
+for(cur_trial in 1:nrow(trials)){
+    p = ggplot(samples[samples$trial==cur_trial,], aes(x=time))
     p = p + geom_line(aes(y=yr, colour='Gaze'))
     p = p + geom_line(aes(y=psr/5, colour='Pupil'))
     p = p + scale_y_continuous(sec.axis = sec_axis(~.*5, name='Pupil Diameter (a.u.)'),
                                limits=ylims)
+    p = p + xlim(0, 3)
     p = p + scale_colour_manual(values=c('blue', 'red'))
     p = p + theme(legend.position = c(0.15, 0.2))
     # number of blanks in this trial:
-    numof_blanks = sum(df_blanks$trial==cur_trial)
+    numof_blanks = sum(blanks$trial==cur_trial)
     if(numof_blanks >= 1){
-        cur_blanks = df_blanks[df_blanks$trial==cur_trial,]
+        cur_blanks = blanks[blanks$trial==cur_trial,]
         for(cur_blank in 1:numof_blanks){
             p = p + geom_rect(data=cur_blanks[cur_blank,], inherit.aes=F, 
-                              aes(xmin=start_time, xmax=end_time, 
+                              aes(xmin=blank_time_beg, xmax=blank_time_end, 
                                   ymin=ylims[1], ymax=ylims[2]),
                               color='transparent', fill='purple', alpha=.3)
         }
     }
-    p = p + geom_rect(data=df_beeps[cur_trial,], inherit.aes=F, 
-                      aes(xmin=trial_start_time, xmax=trial_end_time, 
+    # Marking the cue:
+    p = p + geom_rect(data=trials[cur_trial,], inherit.aes=F, 
+                      aes(xmin=cue_time-trial_time_beg, xmax=cue_time+.2-trial_time_beg, 
                           ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='orange', alpha=.3)
-    p = p + geom_rect(data=df_beeps[cur_trial,], inherit.aes=F, 
-                      aes(xmin=trial_end_time+.5, xmax=trial_end_time+.8, 
+    # Marking the supposed blink time window:
+    p = p + geom_rect(data=trials[cur_trial,], inherit.aes=F, 
+                      aes(xmin=blink_window_time-trial_time_beg, 
+                          xmax=blink_window_time+.3-trial_time_beg, 
                           ymin=ylims[1], ymax=ylims[2]),
-                      color='transparent', fill='yellow', alpha=.3)
+                      color='transparent', fill='green', alpha=.3)
     p = p + labs(y='Gaze Y-Position', x='Time', colour='Parameter')
     p = p + ggtitle(paste('Trial #', as.character(cur_trial))) + theme_bw()
     print(p)
@@ -193,28 +192,28 @@ for(cur_trial in 1:nrow(df_trials)){
 
 # Trial exclusions
 ```{r}
-trials_to_exclude = c(4:5)
-# Logging which trials are marked for exclusion:
-write.table(trials_to_exclude, paste(this_data_dir, 'exclude_trials.csv', sep='/'),
-            row.names=F, col.names=F, sep=',')
-# Tagging trial numbers in a separate column:
-df_beeps$trial = as.numeric(rownames(df_beeps))
-# To convert latency to seconds, we need to first compare sample count with measured time:
-df_beeps$tot_samples = df_beeps$end_sample - df_beeps$start_sample
-df_beeps$tot_time = df_beeps$end_time - df_beeps$start_time
-df_beeps$sample_per_s = df_beeps$tot_time / df_beeps$tot_samples
-# To detemine blink latency, merging blanks with beeps data sets:
-df_aggr = merge(df_blanks, df_beeps, by='trial')
-# Excluding the trials that didn't pass QC:
-df_aggr = df_aggr[!df_aggr$trial %in% trials_to_exclude, ]
-# Computing blink latency:
-df_aggr$latency_samples = df_aggr$start_sample.x - df_aggr$end_sample.y
-df_aggr$latency_time = df_aggr$latency_samples * df_aggr$sample_per_s
-# Computing blink duration:
-df_aggr$blink_duration = df_aggr$tot_samples.x * df_aggr$sample_per_s
-# Selecting columns for output and printing:
-select_cols = c('trial','latency_time','blink_duration')
-sub_df = df_aggr[,select_cols]
-write.csv(sub_df, paste(this_data_dir, 'blink_params.csv', sep='/'), row.names=F)
-print(sub_df)
+# trials_to_exclude = c(4:5)
+# # Logging which trials are marked for exclusion:
+# write.table(trials_to_exclude, paste(this_data_dir, 'exclude_trials.csv', sep='/'),
+#             row.names=F, col.names=F, sep=',')
+# # Tagging trial numbers in a separate column:
+# df_beeps$trial = as.numeric(rownames(df_beeps))
+# # To convert latency to seconds, we need to first compare sample count with measured time:
+# df_beeps$tot_blink_samples = df_beeps$blank_sample_end - df_beeps$blank_sample_beg
+# df_beeps$tot_time = df_beeps$blank_time_end - df_beeps$blank_time_beg
+# df_beeps$sample_per_s = df_beeps$tot_time / df_beeps$tot_blink_samples
+# # To detemine blink latency, merging blanks with beeps data sets:
+# df_aggr = merge(blanks, df_beeps, by='trial')
+# # Excluding the trials that didn't pass QC:
+# df_aggr = df_aggr[!df_aggr$trial %in% trials_to_exclude, ]
+# # Computing blink latency:
+# df_aggr$latency_samples = df_aggr$blank_sample_beg.x - df_aggr$blank_sample_end.y
+# df_aggr$latency_time = df_aggr$latency_samples * df_aggr$sample_per_s
+# # Computing blink duration:
+# df_aggr$blink_duration = df_aggr$tot_samples.x * df_aggr$sample_per_s
+# # Selecting columns for output and printing:
+# select_cols = c('trial','latency_time','blink_duration')
+# sub_df = df_aggr[,select_cols]
+# write.csv(sub_df, paste(this_data_dir, 'blink_params.csv', sep='/'), row.names=F)
+# print(sub_df)
 ```
