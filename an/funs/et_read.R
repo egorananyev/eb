@@ -19,9 +19,9 @@ read_em = function(this_data_dir){
     # Read in the data:
     print(file_path)
     raw_file = gzfile(file_path)
-    raw_data_ = readLines(raw_file)  # gzfile unpacks .gz
+    raw_data = readLines(raw_file)  # gzfile unpacks .gz
     close(raw_file)
-    return(raw_data_)
+    return(raw_data)
 }
 
 # This function converts a specific chunk of raw data into a numeric data frame.
@@ -55,14 +55,14 @@ dfy = function(df_in, cols, space_col=0){
     return(df_out)
 }
 
-parse_samples = function(raw_data_){
+parse_samples = function(raw_data){
     # extracting lines that start with numbers:
-    samples_raw = raw_data_[grepl('^[0-9]', raw_data_)]
+    samples_raw = raw_data[grepl('^[0-9]', raw_data)]
     # creating a proper data frame:
-    samples_ = dfy(samples_raw, 1:4, 0)  # we only need 4 cols, and no columns are space-delimited
-    colnames(samples_) = c('sample', 'xr', 'yr', 'psr')
-    print(head(samples_))
-    return(samples_)
+    samples = dfy(samples_raw, 1:4, 0)  # we only need 4 cols, and no columns are space-delimited
+    colnames(samples) = c('sample', 'xr', 'yr', 'psr')
+    print(head(samples))
+    return(samples)
 }
 
 # Reading all once-per-trial events, including cue, blink latency, blink window, & response:
@@ -94,7 +94,8 @@ parse_trials = function(raw_data){
     trials$tot_trial_samples = trials$trial_sample_end - trials$trial_sample_beg
     trials$tot_trial_time = trials$trial_time_end - trials$trial_time_beg
     trials$samples_per_s = trials$tot_trial_samples / trials$tot_trial_time
-    print(trials)
+    print(paste('number of trials is', as.character(nrow(trials))))
+    print(head(trials))
     return(trials)
 }
 
@@ -128,7 +129,10 @@ parse_blanks = function(raw_data, trials){
         trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
                               blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that this
         # ... implies that the blank must have been initiated on this trial
-        trial_blanks$trial = cur_trial
+        # The following can only be run if the trial_blanks is non-empty:
+        if(nrow(trial_blanks)){
+            trial_blanks$trial = cur_trial
+        }
         trial_blanks$blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) * 
                                       0.001
         trial_blanks$blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) *

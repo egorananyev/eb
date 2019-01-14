@@ -33,10 +33,17 @@ plot_qc = function(samples, trials, xlims){
                           xmax=blink_window_time+.3-trial_time_beg, 
                           ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='green', alpha=.3)
+    # Marking the missing data:
+    p = p + geom_rect(data=trials[cur_trial,], inherit.aes=F, 
+                      aes(xmin=blink_window_time-trial_time_beg-.26, 
+                          xmax=blink_window_time+.3-trial_time_beg, 
+                          ymin=ylims[1], ymax=ylims[2]),
+                      color='transparent', fill='gray', alpha=.15)
     # Indicating the start of key monitoring & trial end times (optional/for debug):
-    # p = p + geom_vline(data=trials[cur_trial,], aes(xintercept=resp_time-trial_time_beg))
-    # p = p + geom_vline(data=trials[cur_trial,], aes(xintercept=trial_time_end-trial_time_beg))
+    p = p + geom_vline(data=trials[cur_trial,], aes(xintercept=resp_time-trial_time_beg),
+                       linetype='longdash')
+    p = p + geom_vline(data=trials[cur_trial,], aes(xintercept=trial_time_end-trial_time_beg))
     p = p + labs(y='Gaze Y-Position', x='Time', colour='Parameter')
     p = p + ggtitle(paste('Trial #', as.character(cur_trial))) + theme_bw()
-    print(p)
+    suppressWarnings(print(p))
 }

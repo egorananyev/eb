@@ -22,8 +22,8 @@ code.r{
 ```{r set-options, message=F}
 options(width=100)
 subj = 'subj-00'
-cond = 'cond-m'
-shocky = T
+cond = 'cond-v'
+shocky = F
 if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else{dropbox_dir='/Users/Egor/Dropbox/'}
 library(R.utils)
 sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs', sep='/'))
@@ -33,6 +33,7 @@ this_data_dir = get_dir(subj, cond, dropbox_dir)
 raw_data = read_em(this_data_dir)
 # Parsing samples:
 samples = parse_samples(raw_data)
+samples$yr[is.na(samples$yr)] = 0
 # Parsing once-per-trial events
 trials = parse_trials(raw_data)
 # Labeling trials in the 'samples' data frame with trial numbers & associating samples w/ time
@@ -43,13 +44,23 @@ blanks = parse_blanks(raw_data, trials)
 
 # Visualization for QC
 ```{r, fig.width=4.5, fig.height=2.5}
-xlims = c(0, 2.2)
+if(cond == 'cond-m'){
+  xlims = c(0, 2.2)
+}else{
+  xlims = c(0, 3.1)
+}
 for(cur_trial in 1:nrow(trials)){
-    plot_qc(samples, trials, xlims)
+  plot_qc(samples, trials, xlims)
 }
 ```
 
 ```{r}
+# Criteria for exclusion:
+# - More / fewer than one blank per trial
+# - Blank occuring before the beep or not completing within the trial
+
 ## To write a CSV file with trial to exclude, run the following command:
-# write_exclusions(c(12))
+# write_exclusions(NA)
+## To estimate blink parameters based on the included trials:
+# estimate_blinks(this_data_dir)
 ```
