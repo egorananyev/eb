@@ -33,8 +33,8 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = False
-dummy_mode = False
+toshi = True
+dummy_mode = True
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
@@ -110,12 +110,12 @@ elif exp_info['cond'] in ['c', 'a']:
     cond_instr = 'Please do the following:\n' \
                  '(1) DO NOT BLINK during the trial - blink after the trial instead;\n' \
                  '(2) Pay attention to the direction of the arrow and\n' \
-                 '(3) Indicate the location of the target circle as quickly as possible after the blink.'
+                 '(3) Indicate the location of the target (WHITE DOT) as soon as you see it by pressing LEFT or RIGHT.'
 else:  # for 'd', 'v', or 'c'
     cond_instr = 'Please do the following:\n' \
                  '(1) Blink immediately after you see an arrow;\n' \
                  '(2) Pay attention to the direction of the arrow and\n' \
-                 '(3) Indicate the location of the target circle as quickly as possible after the blink.'
+                 '(3) Indicate the location of the target (WHITE DOT) as soon as you see it by pressing LEFT or RIGHT.'
 
 ## Input and output
 
@@ -387,13 +387,13 @@ for trial in trials:
     ## Starting the eye-tracking recording.
 
     # We pump 150 ms delay to allow sufficient time to initiate trials, during which the fixation cross is displayed:
+    # flip_time = window.flip()
     fix_cross.draw()
-    flip_time = window.flip()
 
     # Starting the recording:
     # take the tracker offline
     tracker.setOfflineMode()
-    tracker.sendMessage('PRE_PUMP %.2f' % flip_time)
+    # tracker.sendMessage('PRE_PUMP %.2f' % flip_time)
     pylink.pumpDelay(50)
 
     # send the standard "TRIALID" message to mark the start of a trial

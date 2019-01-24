@@ -21,36 +21,175 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-subj = 'subj-00'
-cond = 'cond-v'
+subj = 'subj-01'
+cond = 'cond-m'
+sess = 1
 shocky = F
+debug = F
+## Exclusions constants:
+eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else{dropbox_dir='/Users/Egor/Dropbox/'}
 library(R.utils)
 sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs', sep='/'))
 # Getting the data directory:
-this_data_dir = get_dir(subj, cond, dropbox_dir)
+data_dir = get_dir(subj, cond, sess, dropbox_dir)
 # Reading raw data:
-raw_data = read_em(this_data_dir)
+raw_data = read_em(data_dir)
 # Parsing samples:
 samples = parse_samples(raw_data)
 samples$yr[is.na(samples$yr)] = 0
 # Parsing once-per-trial events
-trials = parse_trials(raw_data)
+trials = parse_trials(raw_data, cond)
 # Labeling trials in the 'samples' data frame with trial numbers & associating samples w/ time
 samples = lab_samples(samples, trials)
 # Parsing blank events (may be more than one per trial)
 blanks = parse_blanks(raw_data, trials)
 ```
 
+# Merging blanks & trials
+```{r}
+## TEMP:
+# For debugging, picking a select few trials:
+if(debug){
+  included_trials = c(1, 2, 3)
+  samples = samples[samples$trial %in% included_trials,]
+  trials = trials[trials$trial %in% included_trials,]
+  blanks = blanks[blanks$trial %in% included_trials,]
+}
+
+# The merged data frame has trials and blanks combined:
+merged = merge(trials, blanks, by='trial', all=T)
+# Reaction time is the response time stamp minus trial start time stamp:
+merged$rt = with(merged, resp_time - trial_time_beg)
+```
+
+# Automatic trial exclusion
+```{r}
+# In conditions that require blinking after the cue (voluntary and measurement):
+# Excluding trials with no blink:
+if(cond %in% c('cond-v', 'cond-m')){
+  cue_targ_blinks = merged$blank_time_beg > (merged$cue_time - merged$trial_time_beg) &
+                    merged$blank_time_end < (merged$targ_time - merged$trial_time_beg)
+  excl_no_blink_trials = !merged$trial %in% merged$trial[cue_targ_blinks]
+  if(sum(excl_no_blink_trials, na.rm=T)){  # if there is one or more such trials
+    excl_no_blink = data.frame(trial = unique(merged$trial[excl_no_blink_trials]),
+                               excl_reason = 'no blink')
+    # Important to account for situations when no blink has occurred on a given trial:
+    excl_no_blink = excl_no_blink[!is.na(excl_no_blink$trial),]
+  } else {
+    excl_no_blink = NULL
+  }
+} else {
+  excl_no_blink = NULL
+}
+
+# In control condition (that requires the subject not to blink)...
+# Excluding trials with blinks between the cue and the target (prohibited blinks):
+if(cond == 'cond-c'){
+  excl_prohib_blink_trials = merged$blank_time_beg > (merged$cue_time - merged$trial_time_beg) &
+                             merged$blank_time_beg < (merged$targ_time - merged$trial_time_beg)
+  excl_prohib_blink = data.frame(trial = unique(merged$trial[excl_prohib_blink_trials]),
+                                 excl_reason = 'prohibited blink')
+  # Important to account for situations when no blink has occurred on a given trial:
+  excl_prohib_blink = excl_prohib_blink[!is.na(excl_prohib_blink$trial),]
+} else {
+  excl_prohib_blink = NULL
+}
+
+# In all experimental (non-measurement) conditions:
+# Excluding trials with 'target blinks' (blinks during target presentation):
+if(cond!='cond-m'){
+  excl_targ_blink_trials = merged$blank_time_end > (merged$targ_time -
+                                                      merged$trial_time_beg +
+                                                      eo_tolerance) &
+                           merged$blank_time_end < (merged$resp_time - 
+                                                      merged$trial_time_beg)
+  if(sum(excl_targ_blink_trials, na.rm=T)){
+    # Finding blanks that occur more than 'eyes open' tolerance post-target presentation.
+    excl_targ_blink = data.frame(trial = unique(merged$trial[excl_targ_blink_trials]),
+                                 excl_reason = 'target blink')
+    # Important to account for situations when no blink has occurred on a given trial:
+    excl_targ_blink = excl_targ_blink[!is.na(excl_targ_blink$trial),]
+  } else {
+    excl_targ_blink = NULL
+  }
+} else {
+  excl_targ_blink = NULL
+}
+```
+
+# Manual trial excl/inclusions
+```{r}
+# Obtaining the manual override, if it exists
+manual = get_manual(data_dir)
+if(!is.null(manual)){
+  # In addition to the auto-excluded trials, we need to also exclude the manually excluded ones:
+  if(sum(manual$excl0incl1==0)){
+    list_excl = manual[manual$excl0incl1==0,]
+    excl_manual = data.frame(trial = list_excl$trial, excl_reason = list_excl$reason)
+  } else {
+    excl_manual = NULL
+  }
+  # Also accounting for manual overrides of the auto-exclusions:
+  if(sum(manual$excl0incl1==1)){
+    list_incl = manual[manual$excl0incl1==1,]
+    incl_manual = data.frame(trial = list_incl$trial, incl_reason = list_incl$reason)
+  } else {
+    incl_manual = NULL
+  }
+} else {
+  excl_manual = NULL
+  incl_manual = NULL
+}
+```
+
+# Output
+```{r}
+# Printing all exclusions (if any) to screen and exporting:
+all_excl = rbind(excl_targ_blink, excl_prohib_blink, excl_no_blink)
+# Also attaching manual exclusions, if any:
+if(!is.null(excl_manual)){
+  all_excl = rbind(all_excl, excl_manual)
+}
+# Manually overriding any auto-exclusions, if any:
+if(!is.null(incl_manual)){
+  print('Warning! Manual exclusion override code has not been tested!')
+  all_excl = all_excl(!all_excl$trial %in% unique(incl_manual$trial))
+}
+# Writing exclusions to a file:
+if(!is.null(all_excl)){
+  ( all_excl = all_excl[order(all_excl$trial),] )
+  if(!debug){
+    write_exclusions(all_excl, data_dir)
+  }
+}
+
+# Exporting all trials
+if(!is.null(all_excl)){
+  merged = merge(merged, all_excl, by='trial', all=T)
+} else {
+  merged$excl_reason = NA
+}
+if(!debug){
+  write.table(merged, paste(data_dir, 'eye_tracking.csv', sep='/'), row.names=F, sep=',')
+}
+```
+
 # Visualization for QC
 ```{r, fig.width=4.5, fig.height=2.5}
-if(cond == 'cond-m'){
-  xlims = c(0, 2.2)
-}else{
-  xlims = c(0, 3.1)
-}
-for(cur_trial in 1:nrow(trials)){
-  plot_qc(samples, trials, xlims)
+# if(cond == 'cond-m'){
+#   xlims = c(0, 2.2)
+# }else{
+#   xlims = c(0, 3.1)
+# }
+# Taking every third row (sufficient sampling for visualization):
+sub_samples = samples[c(T,F,F),]
+# Cycling through trials to visualize
+for(cur_trial in as.numeric(rownames(trials))){
+  # start.time <- Sys.time() 
+  plot_qc(sub_samples, trials)
+  # end.time <- Sys.time()
+  # (time.taken <- end.time - start.time)
 }
 ```
 
@@ -62,5 +201,5 @@ for(cur_trial in 1:nrow(trials)){
 ## To write a CSV file with trial to exclude, run the following command:
 # write_exclusions(NA)
 ## To estimate blink parameters based on the included trials:
-# estimate_blinks(this_data_dir)
+# estimate_blinks(data_dir)
 ```

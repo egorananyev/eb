@@ -3,19 +3,20 @@
 # 2019-01-12
 
 # Getting the data directory
-get_dir = function(subj_, cond_, dropbox_dir){
-    data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb1')
-    cond_dir = paste(data_dir, subj_, cond_, sep='/')
-    all_data_dirs = list.dirs(cond_dir)[-1]  # excluding the first (base) directory
+get_dir = function(subj, cond, sess, dropbox_dir){
+    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb1'), subj, cond, sep='/')
+    this_sess = paste0('sess-', as.character(sess))
+    data_dir = paste(cond_dir, dir(cond_dir, pattern=this_sess), sep='/')
     # TEMP: for now, just taking the last directory:
-    this_data_dir = all_data_dirs[length(all_data_dirs)]
-    return(this_data_dir)
+    # all_data_dirs = list.dirs(cond_dir)[-1]  # excluding the first (base) directory
+    # data_dir = all_data_dirs[length(all_data_dirs)]
+    return(data_dir)
 }
 
 # Function for reading faw .asc.gz files
-read_em = function(this_data_dir){
-    file_name = dir(this_data_dir, pattern='.asc.gz')
-    file_path = paste(this_data_dir, file_name, sep='/')
+read_em = function(data_dir){
+    file_name = dir(data_dir, pattern='.asc.gz')
+    file_path = paste(data_dir, file_name, sep='/')
     # Read in the data:
     print(file_path)
     raw_file = gzfile(file_path)
@@ -66,10 +67,11 @@ parse_samples = function(raw_data){
 }
 
 # Reading all once-per-trial events, including cue, blink latency, blink window, & response:
-parse_trials = function(raw_data){
+parse_trials = function(raw_data, cond){
     # Storing the start and end trials times:
     trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5), 2),
                         end=dfy(raw_data[grepl('TRIAL_END', raw_data)], c(3,5), 2))
+    trials$trial = as.numeric(rownames(trials))
     # Adding cue onset time:
     trials = cbind(trials, 
                    data.frame(cue_onset=dfy(raw_data[grepl('CUE_ONSET', raw_data)], c(3,5), 2)))
@@ -81,15 +83,33 @@ parse_trials = function(raw_data){
     trials = cbind(trials, 
                    data.frame(blink_window=dfy(raw_data[grepl('BLINK_WINDOW_ONSET', raw_data)],
                                                 c(3,5), 2)))
-    # Adding response onset time:
+    # Adding target onset (confusingly called RESPONSE_ONSET in the eye-tracking output --
+    # ... too late to change that, I suppose):
     trials = cbind(trials, 
                    data.frame(blink_window=dfy(raw_data[grepl('RESPONSE_ONSET', raw_data)], 
                                                 c(3,5), 2)))
+    # Adding response onset time:
+    trials = cbind(trials, 
+                   data.frame(blink_window=dfy(raw_data[grepl('TRIAL_RESPONSE', raw_data)], 
+                                                c(3,5), 2)))
     # Renaming columns to prettier variable names:
     colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
-                         'trial_sample_end', 'trial_time_end',
+                         'trial_sample_end', 'trial_time_end', 'trial',
                          'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
-                         'blink_window_sample', 'blink_window_time', 'resp_sample', 'resp_time')
+                         'blink_window_sample', 'blink_window_time', 'targ_sample', 'targ_time',
+                         'resp_sample', 'resp_time')
+    # Adding the on/off times for the shutter goggles:
+    if(cond == 'cond-a'){
+        trials = cbind(trials, 
+                       data.frame(shutters_on=dfy(raw_data[grepl('SHUTTER_START', raw_data)], 
+                                                  c(3,5), 2),
+                                  shutters_off=dfy(raw_data[grepl('SHUTTER_END', raw_data)],
+                                                   c(3,5), 2)))
+        colnames(trials)[(ncol(trials)-3):ncol(trials)] = c('shutter_sample_beg',
+                                                            'shutter_time_beg',
+                                                            'shutter_sample_end',
+                                                            'shutter_time_end')
+    }
     # For sample rate check, the last column should be all 1000 (corresponding to Hz):
     trials$tot_trial_samples = trials$trial_sample_end - trials$trial_sample_beg
     trials$tot_trial_time = trials$trial_time_end - trials$trial_time_beg
@@ -102,7 +122,7 @@ parse_trials = function(raw_data){
 # Labeling samples with trial numbers and adding 'time' column (in seconds)
 lab_samples = function(samples, trials){
     all_samples = data.frame()
-    for(cur_trial in 1:nrow(trials)){
+    for(cur_trial in as.numeric(rownames(trials))){
         this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
         this_trial_sample_end = trials$trial_sample_end[cur_trial]
         trial_samples = samples[samples$sample>=this_trial_sample_beg & 
@@ -123,7 +143,7 @@ parse_blanks = function(raw_data, trials){
     colnames(blanks) = c('blank_sample_beg', 'blank_sample_end', 'tot_blank_samples')
     all_blanks = data.frame()
     # Labeling trials in the 'blanks' data frame
-    for(cur_trial in 1:nrow(trials)){
+    for(cur_trial in as.numeric(rownames(trials))){
         this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
         this_trial_sample_end = trials$trial_sample_end[cur_trial]
         trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
