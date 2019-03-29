@@ -33,12 +33,12 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
+toshi = False
 dummy_mode = True
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
-trial_n = 15  # trials per condition row; 15 gives 300 trials
+trial_n = 5  # trials per condition row; 15 gives 120 trials
 cue_delay_min = 300  # the time frame before the location/blink cue
 cue_delay_max = 800
 blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
@@ -65,10 +65,10 @@ cue_off_y = 1
 cue_dur = .2
 # target:
 targ_off_x = 8
-targ_diam = .8
+targ_diam = 8  # .8 # TEMP
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'm', u'sess': u'1'}
+exp_info = {u'expt': exp_name, u'subj': u'1', u'cond': u'a', u'sess': u'1'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 exp_name = exp_info['expt']
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
@@ -189,9 +189,11 @@ else:
     # you MUST specify the physical properties of your monitor first, otherwise you won't be able to properly use
     # different screen "units" in psychopy. One may define his/her monitor object within the GUI, but
     # I find it is a better practice to put things all under control in the experimental script instead.
-    mon = monitors.Monitor('Station3', width=dd[0], distance=ds)
-    mon.setSizePix(dr)
-    window = visual.Window(dr, fullscr=True, monitor=mon, color=[0, 0, 0], units='deg',
+    mon = monitors.Monitor('station3')  # , width=dd[0], distance=ds)
+    # mon.setSizePix(dr)
+    print('----------------')
+    print(mon.getDistance())
+    window = visual.Window(dr, fullscr=True, monitor=mon, color=[-.5, -.5, -.5], units='deg',
                            allowStencil=True, autoLog=False, screen=0, waitBlanking=False)
 
 if toshi:
@@ -218,7 +220,7 @@ double_arrow = visual.ShapeStim(window, vertices=double_arrow_vert, fillColor='b
                                 pos=(0, cue_off_y))
 
 # target:
-targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='white')
+targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(10, 0), fillColor='grey')
 
 ## Eye-tracking calibration:
 # call the custom calibration routine "EyeLinkCoreGraphicsPsychopy.py", instead of the default
