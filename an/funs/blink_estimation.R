@@ -2,9 +2,9 @@
 # Egor Ananyev
 # 2019-01-12
 
-estimate_blinks = function(this_data_dir){
+estimate_blinks = function(data_dir){
     # Reading the trials to exclude
-    excluded_trials = get_exclusions(this_data_dir)
+    excluded_trials = read.csv(paste(data_dir, 'exclude_trials.csv', sep='/'))
     # To determine blink latency, merging blanks with beeps data sets:
     aggr = cbind(blanks, trials)
     # Excluding the trials that didn't pass QC:
@@ -17,6 +17,6 @@ estimate_blinks = function(this_data_dir){
     # Selecting columns for output and printing:
     select_cols = c('trial','latency_time','blink_duration')
     sub_df = aggr[,select_cols]
-    write.csv(sub_df, paste(this_data_dir, 'blink_params.csv', sep='/'), row.names=F)
+    write.csv(sub_df, paste(data_dir, 'blink_params.csv', sep='/'), row.names=F)
     print(sub_df)
 }

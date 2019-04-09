@@ -21,44 +21,157 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-shocky = F
+shocky = T
 debug = F
+short_rt_cutoff = 0.2
+library(plyr)
 library(ggplot2)
 if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else{dropbox_dir='/Users/Egor/Dropbox/'}
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_t.R', sep='/'))
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_U.R', sep='/'))
 data_dir = paste(dropbox_dir, 'Projects/eb/data/eb1/', sep='/')
 subjs = dir(data_dir, pattern='subj-')
 ds = data.frame()
-cur_subj = subjs  # temp
-cur_subj_dir = paste0(data_dir, cur_subj)
-conds = dir(cur_subj_dir, pattern='cond-')
-# cur_cond = conds[1]  # temp
-for(cur_cond in conds){
-  cur_cond_dir = paste(cur_subj_dir, cur_cond, sep='/')
-  sesss = dir(cur_cond_dir, pattern='sess-')
-  # cur_sess = sesss[1]  # temp
-  for(cur_sess in sesss){
-    cur_sess_dir = paste(cur_cond_dir, cur_sess, sep='/')
-    cur_ds = read.csv(paste(cur_sess_dir, 'beh_out.csv', sep='/'))
-    # print(colnames(cur_ds))  # debug
-    # ds = cur_ds  # temp
-    ds = rbind(ds, cur_ds)
-  }
+excl = data.frame()
+# cur_subj = subjs  # temp
+for(cur_subj in subjs){
+    cur_subj_dir = paste0(data_dir, cur_subj)
+    # conds = dir(cur_subj_dir, pattern='cond-')
+    conds = c('cond-a', 'cond-c', 'cond-v')
+    # cur_cond = conds[1]  # temp
+    for(cur_cond in conds){
+      cur_cond_dir = paste(cur_subj_dir, cur_cond, sep='/')
+      sesss = dir(cur_cond_dir, pattern='sess-')
+      # cur_sess = sesss[1]  # temp
+      for(cur_sess in sesss){
+        cur_sess_dir = paste(cur_cond_dir, cur_sess, sep='/')
+        cur_ds = read.csv(paste(cur_sess_dir, 'beh_out.csv', sep='/'))
+        # print(colnames(cur_ds))  # debug
+        # ds = cur_ds  # temp
+        ds = rbind(ds, cur_ds)
+        excl_file = paste(cur_sess_dir, 'exclude_trials.csv', sep='/')
+        if(file.exists(excl_file)){
+          excl_file_ds = read.csv(excl_file)
+          if(nrow(excl_file_ds) > 0){
+            cur_excl = cbind(data.frame(subj=as.numeric(substr(cur_subj, 6, 7)), 
+                                        cond=substr(cur_cond, 6, 6),
+                                        sess=as.numeric(substr(cur_sess, 6, 6))), 
+                             excl_file_ds)
+            excl = rbind(excl, cur_excl)
+          }
+        }
+      }
+    }
 }
+colnames(ds)[5] = 'trial'  # renaming the 'trial_id' column to 'trial'
+head(ds)
+print(excl)
+```
+
+# Cleaning data
+```{r}
+# Excluding trials with RTs that are too short (below 200 ms)
+excl_short = ds[ds$rt<short_rt_cutoff, c('subj', 'cond', 'sess', 'trial')]
+if(nrow(excl_short) > 0){  # if there are any trials to exclude based on the short RTs
+  colnames(excl_short)[4] = 'trial'  # renaming the 'trial_id' column to 'trial'
+  excl_short$excl_reason = 'short RT'  # including exclusion reason
+  ## Adding the short trials to the common exclusion list:
+  excl = rbind(excl, excl_short)
+  rownames(excl) <- NULL
+}
+# Displaying number of trials to be excluded, based on condition and session
+ddply(excl, .(subj, cond, excl_reason), summarise, num_excl = length(trial))
+# Excluding trials based on the quality control & the RT exclusion criteria:
+library(dplyr)
+ds = anti_join(ds, excl, by=c('subj', 'cond', 'sess', 'trial'))
+```
+
+# Summary stats
+```{r}
+ddply(ds, .(subj, cond, cue_valid), summarise, mean_RT = mean(rt))
+```
+
+# Better condition names
+```{r}
+ds$Cond = 'NoBlink'
+ds$Cond[ds$cond=='a'] = 'Artificial'
+ds$Cond[ds$cond=='v'] = 'Prompted'
+ds$CondFull = 'No Blink'
+ds$CondFull[ds$cond=='a'] = 'Artificial Blink'
+ds$CondFull[ds$cond=='v'] = 'Prompted Blink'
 ```
 
 # Visualization
 ## Cueing
 ```{r, fig.width=3, fig.height=2.5}
-for(cur_cond in c('a','c','v')){
-  p = ggplot(data=ds[ds$cond==cur_cond,], aes(x=factor(cue_valid), y=rt))
-  p = p + theme_bw() + ylim(.1,.9)
-  p = p + geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.02)
-  suppressWarnings(plot(p))
+for(cur_subj in subjs){
+    for(cur_cond in c('a','c','v')){
+      cur_ds = ds[ds$cond==cur_cond & ds$subj==as.numeric(substring(cur_subj, 6, 7)),]
+      cur_cond_name = unique(cur_ds$CondFull)
+      p = ggplot(data=cur_ds, aes(x=factor(cue_valid), y=rt))
+      p = p + theme_bw() + ylim(short_rt_cutoff, .9)
+      p = p + geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.02)
+      p = p + ggtitle(paste('cond', cur_cond_name))
+      suppressWarnings(plot(p))
+    }
+}
+```
+
+```{r, fig.width=3, fig.height=2.5}
+for(cur_subj in subjs){
+    for(cur_cond in c('a','c','v')){
+      cur_ds = ds[ds$cond==cur_cond & ds$subj==as.numeric(substring(cur_subj, 6, 7)),]
+      cur_cond_name = unique(cur_ds$CondFull)
+      p = ggplot(data=cur_ds, aes(x=rt, colour=factor(cue_valid))) + geom_density() +
+        theme(legend.position = 'bottom') + ggtitle(paste('cond', cur_cond_name))
+      plot(p)
+    }
 }
 ```
 
 # Analyses
 ```{r}
-summary(lm(rt~cond*cue_valid, data=ds))  # switch to lme4 for mixed models
-1 / generalTestBF(rt ~ cond*cue_valid, data=ds, whichModels='top')
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('NoBlink','Artificial','Prompted')) #this works for lm
+summary(lm(rt~Cond*cue_valid, data=ds))  # switch to lme4 for mixed models
+# 1 / generalTestBF(rt ~ cond*cue_valid, data=ds, whichModels='top')
+```
+
+# Predicting necessary N
+```{r}
+obt_eff = 0.026
+obt_se = 0.015
+
+# Function for retrieving the BFs associated with different Ns:
+bf_N = function(base_eff, base_ssd, tails=2){  # base_ssd = the sum of squared difference
+  # BF_U(LL, UL, meanobtained, semobtained, dfobtained)
+  bfs = c()
+  for(cur_N in 2:40){
+    if(tails==1)  # one-tailed
+      { bfs = c(bfs, BF_U(0, .03, base_eff, base_ssd/sqrt(cur_N), cur_N-1)) }
+    else  # two-tailed
+      { bfs = c(bfs, BF_U(-0.03, .03, base_eff, base_ssd/sqrt(cur_N), cur_N-1)) }
+  }
+  # print(bfs)
+  return(bfs)
+}
+
+# Function for retrieving the minimum N at which a significant BF is achieved
+# (assuming alternative is true):
+min_N = function(eff, ssd, tails=1){ 
+  min(which(bf_N(eff, ssd, tails)>3))+1
+}
+
+## At which N does the BF achieve significance?
+
+# At first, testing one-tailed hypothesis:
+min_N(obt_eff, obt_se * 1.0)  # at SSD of one (assuming the least noisy SE)
+min_N(obt_eff, obt_se * 1.5)  # at SSD 1.5 times the minimum SSD
+min_N(obt_eff, obt_se * 2.0)  # twice the minimum SSD
+
+# Testing a two-tailed hypothesis:
+# At which N does the BF achieve significance?
+min_N(obt_eff, obt_se * 1.0, 2)  # at SSD of one (assuming the least noisy SE)
+min_N(obt_eff, obt_se * 1.5, 2)  # at SSD 1.5 times the minimum SSD
+min_N(obt_eff, obt_se * 2.0, 2)  # twice the minimum SSD
 ```

@@ -12,7 +12,7 @@ get_manual = function(data_dir){
     # manual override -- exclusions (0) or inclusions (1);
     ## Example of a 'manual_override.csv' file content:
     # trial   excl0incl1    reason
-    # 31      0 lost        signal
+    # 31      0             lost signal
     ## Catalogue of possible options:
     # 0 "lost signal"
     # 0 "noisy"

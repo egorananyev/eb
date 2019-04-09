@@ -88,16 +88,25 @@ parse_trials = function(raw_data, cond){
     trials = cbind(trials, 
                    data.frame(blink_window=dfy(raw_data[grepl('RESPONSE_ONSET', raw_data)], 
                                                 c(3,5), 2)))
-    # Adding response onset time:
-    trials = cbind(trials, 
-                   data.frame(blink_window=dfy(raw_data[grepl('TRIAL_RESPONSE', raw_data)], 
-                                                c(3,5), 2)))
-    # Renaming columns to prettier variable names:
-    colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
-                         'trial_sample_end', 'trial_time_end', 'trial',
-                         'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
-                         'blink_window_sample', 'blink_window_time', 'targ_sample', 'targ_time',
-                         'resp_sample', 'resp_time')
+    if(cond!='cond-m'){
+        # Adding response onset time:
+        trials = cbind(trials, 
+                       data.frame(blink_window=dfy(raw_data[grepl('TRIAL_RESPONSE', raw_data)], 
+                                                    c(3,5), 2)))
+        # Renaming columns to prettier variable names:
+        colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
+                             'trial_sample_end', 'trial_time_end', 'trial',
+                             'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
+                             'blink_window_sample', 'blink_window_time', 'targ_sample', 'targ_time',
+                             'resp_sample', 'resp_time')
+    } else {
+        # Renaming columns to prettier variable names:
+        colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
+                             'trial_sample_end', 'trial_time_end', 'trial',
+                             'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
+                             'blink_window_sample', 'blink_window_time', 'targ_sample', 'targ_time')
+        
+    }
     # Adding the on/off times for the shutter goggles:
     if(cond == 'cond-a'){
         trials = cbind(trials, 
@@ -140,25 +149,47 @@ lab_samples = function(samples, trials){
 parse_blanks = function(raw_data, trials){
     # Extracting the lines with blank ends, as they include blank start, end, and duration:
     blanks = dfy(raw_data[grepl('^EBLINK', raw_data)], c(6,2,3), 1)
+    if(ncol(blanks)==1){
+        blanks = t(blanks)
+        rownames(blanks) = NULL
+    }
     colnames(blanks) = c('blank_sample_beg', 'blank_sample_end', 'tot_blank_samples')
     all_blanks = data.frame()
     # Labeling trials in the 'blanks' data frame
     for(cur_trial in as.numeric(rownames(trials))){
         this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
         this_trial_sample_end = trials$trial_sample_end[cur_trial]
-        trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
-                              blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that this
-        # ... implies that the blank must have been initiated on this trial
-        # The following can only be run if the trial_blanks is non-empty:
-        if(nrow(trial_blanks)){
-            trial_blanks$trial = cur_trial
+        if(nrow(blanks)>1){
+            trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
+                                  blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that
+            # ... this implies that the blank must have been initiated on this trial
+        } else {
+            if(nrow(blanks)==1){  # if there's only one blank, see if it matches the trial
+                if(blanks[1] >= this_trial_sample_beg & blanks[2] < this_trial_sample_end){
+                    trial_blanks = blanks
+                } else {
+                    trial_blanks = NULL
+                }
+            } else {
+                trial_blanks = NULL
+            }
         }
-        trial_blanks$blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) * 
-                                      0.001
-        trial_blanks$blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) *
-                                      0.001
-        blanks$trial[blanks$blank_sample_beg>=trials$trial_sample_beg[cur_trial]] = cur_trial
-        all_blanks = rbind(all_blanks, trial_blanks)
+        # The following can only be run if the trial_blanks is non-empty:
+        if(!is.null(trial_blanks)){
+            trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
+            this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
+            trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
+            this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
+            trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
+            # if(nrow(blanks)>1){
+            #     blanks$trial[blanks$blank_sample_beg>=trials$trial_sample_beg[cur_trial]] = cur_trial
+            # } else {
+            #     if(blanks[1] >= trials$trial_sample_beg[cur_trial]){
+            #         blanks = data.frame(blanks, data.frame(trial = cur_trial))
+            #     }
+            # }
+            all_blanks = rbind(all_blanks, trial_blanks)
+        }
     }
     all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
     print(head(all_blanks))

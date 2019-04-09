@@ -38,8 +38,10 @@ plot_qc = function(samples, trials){
     p = p + geom_vline(data=trials[as.character(cur_trial),], 
                        aes(xintercept=targ_time-trial_time_beg),
                        linetype='longdash')
-    p = p + geom_vline(data=trials[as.character(cur_trial),], 
-                       aes(xintercept=resp_time-trial_time_beg))
+    if(cond != 'cond-m'){
+        p = p + geom_vline(data=trials[as.character(cur_trial),], 
+                           aes(xintercept=resp_time-trial_time_beg))
+    }
     p = p + labs(y='Gaze Y-Position', x='Time', colour='Parameter')
     p = p + ggtitle(paste('Trial #', as.character(cur_trial)))
     # Dealing with exclusions:

@@ -22,9 +22,9 @@ code.r{
 ```{r set-options, message=F}
 options(width=100)
 subj = 'subj-01'
-cond = 'cond-m'
-sess = 1
-shocky = F
+cond = 'cond-a'
+sess = 3
+shocky = T
 debug = F
 ## Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
@@ -59,8 +59,12 @@ if(debug){
 
 # The merged data frame has trials and blanks combined:
 merged = merge(trials, blanks, by='trial', all=T)
-# Reaction time is the response time stamp minus trial start time stamp:
-merged$rt = with(merged, resp_time - trial_time_beg)
+if(cond != 'cond-m'){
+    # Reaction time is the response time stamp minus trial start time stamp:
+    merged$rt = with(merged, resp_time - trial_time_beg)
+}
+merged$nonart = 1  # all blanks are considered non-artificial at first, which is overwritten in
+# ... cond-a
 ```
 
 # Automatic trial exclusion
@@ -68,33 +72,44 @@ merged$rt = with(merged, resp_time - trial_time_beg)
 # In conditions that require blinking after the cue (voluntary and measurement):
 # Excluding trials with no blink:
 if(cond %in% c('cond-v', 'cond-m')){
-  cue_targ_blinks = merged$blank_time_beg > (merged$cue_time - merged$trial_time_beg) &
-                    merged$blank_time_end < (merged$targ_time - merged$trial_time_beg)
-  excl_no_blink_trials = !merged$trial %in% merged$trial[cue_targ_blinks]
-  if(sum(excl_no_blink_trials, na.rm=T)){  # if there is one or more such trials
-    excl_no_blink = data.frame(trial = unique(merged$trial[excl_no_blink_trials]),
-                               excl_reason = 'no blink')
+    cue_targ_blinks = merged$blank_time_beg > (merged$cue_time - merged$trial_time_beg) &
+                      merged$blank_time_end < (merged$targ_time - merged$trial_time_beg)
+    excl_no_blink_trials = !merged$trial %in% merged$trial[cue_targ_blinks]
+    if(sum(excl_no_blink_trials, na.rm=T)){  # if there is one or more such trials
+        excl_no_blink = data.frame(trial = unique(merged$trial[excl_no_blink_trials]),
+                                   excl_reason = 'no blink')
     # Important to account for situations when no blink has occurred on a given trial:
     excl_no_blink = excl_no_blink[!is.na(excl_no_blink$trial),]
-  } else {
-    excl_no_blink = NULL
-  }
+    } else {
+        excl_no_blink = NULL
+    }
 } else {
-  excl_no_blink = NULL
+    excl_no_blink = NULL
 }
 
 # In control condition (that requires the subject not to blink)...
 # Excluding trials with blinks between the cue and the target (prohibited blinks):
-if(cond == 'cond-c'){
-  excl_prohib_blink_trials = merged$blank_time_beg > (merged$cue_time - merged$trial_time_beg) &
-                             merged$blank_time_beg < (merged$targ_time - merged$trial_time_beg)
-  excl_prohib_blink = data.frame(trial = unique(merged$trial[excl_prohib_blink_trials]),
-                                 excl_reason = 'prohibited blink')
-  # Important to account for situations when no blink has occurred on a given trial:
-  excl_prohib_blink = excl_prohib_blink[!is.na(excl_prohib_blink$trial),]
+if(cond == 'cond-c' | cond == 'cond-a'){
+    if(cond == 'cond-a'){
+        # Blinks are prohibited during the 'artificial' blink condition, which is why they need to
+        # ... be distinguished from the simulated ones:
+        merged$nonart = 0
+        # Pupil-detection or lost signal lags behind the shutter glasses by 1-5 samples:
+        artif_inds = with(merged, blank_sample_beg >= shutter_sample_beg &
+                                  blank_sample_end <= shutter_sample_end + 10)  # so, ...
+        # ... allowing some wiggle-time (ten samples) for pupil to be detected post-artblink
+        merged$nonart[!artif_inds] = 1  # marking blanks that are not artificial blinks
+    }
+    excl_prohib_blink_trials = with(merged, blank_time_beg > (cue_time - trial_time_beg) &
+                               blank_time_beg < (targ_time - trial_time_beg) & nonart)
+    excl_prohib_blink = data.frame(trial = unique(merged$trial[excl_prohib_blink_trials]),
+                                   excl_reason = 'prohibited blink')
+    # Important to account for situations when no blink has occurred on a given trial:
+    excl_prohib_blink = excl_prohib_blink[!is.na(excl_prohib_blink$trial),]
 } else {
-  excl_prohib_blink = NULL
+    excl_prohib_blink = NULL
 }
+
 
 # In all experimental (non-measurement) conditions:
 # Excluding trials with 'target blinks' (blinks during target presentation):
@@ -199,7 +214,9 @@ for(cur_trial in as.numeric(rownames(trials))){
 # - Blank occuring before the beep or not completing within the trial
 
 ## To write a CSV file with trial to exclude, run the following command:
-# write_exclusions(NA)
+# write_exclusions(9)
 ## To estimate blink parameters based on the included trials:
-# estimate_blinks(data_dir)
+if(cond == 'cond-m'){
+  estimate_blinks(data_dir)
+}
 ```
