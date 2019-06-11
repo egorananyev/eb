@@ -20,6 +20,15 @@
           <option value="E711" />
           <option value="E712" />
           <option value="E722" />
+          <option value="E302" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="psychopy.visual.Rect" />
+          <option value="psychopy.visual.Circle" />
         </list>
       </option>
     </inspection_tool>
