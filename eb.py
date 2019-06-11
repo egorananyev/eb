@@ -40,7 +40,7 @@ drift_check = False
 exp_name = 'eb1'
 trial_n = 5  # trials per condition row; 15 gives 120 trials
 cue_delay_min = 300  # the time frame before the location/blink cue
-cue_delay_max = 800
+cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
 blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
 blink_latency_max = 500
 # the time window for the blink - quite conservative - should include the whole blink, but is independent of
@@ -62,7 +62,7 @@ fix_size = 0.8
 # cue:
 cue_size = .8
 cue_off_y = 1
-cue_dur = .2
+cue_dur = .1  # shortened on 2019-06-11
 # target:
 targ_off_x = 8
 targ_diam = 8  # .8 # TEMP

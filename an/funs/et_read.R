@@ -181,13 +181,6 @@ parse_blanks = function(raw_data, trials){
             trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
             this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
             trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
-            # if(nrow(blanks)>1){
-            #     blanks$trial[blanks$blank_sample_beg>=trials$trial_sample_beg[cur_trial]] = cur_trial
-            # } else {
-            #     if(blanks[1] >= trials$trial_sample_beg[cur_trial]){
-            #         blanks = data.frame(blanks, data.frame(trial = cur_trial))
-            #     }
-            # }
             all_blanks = rbind(all_blanks, trial_blanks)
         }
     }
