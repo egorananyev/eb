@@ -2,13 +2,17 @@
 # Egor Ananyev
 # 2019-01-12
 
-estimate_blinks = function(data_dir){
-    # Reading the trials to exclude
-    excluded_trials = read.csv(paste(data_dir, 'exclude_trials.csv', sep='/'))
+estimate_blinks = function(data_dir, exclusions){
     # To determine blink latency, merging blanks with beeps data sets:
-    aggr = cbind(blanks, trials)
-    # Excluding the trials that didn't pass QC:
-    aggr = aggr[!aggr$trial %in% excluded_trials, ]
+    aggr = merge(trials, blanks, by='trial', all=T)
+    # In measurement condition, excluding the blinks that occur after the trial ends:
+    aggr = aggr[aggr$blank_time_end < (aggr$targ_time - aggr$trial_time_beg),]
+    # Reading the trials to exclude
+    if(exclusions){
+        excluded_trials = read.csv(paste(data_dir, 'exclude_trials.csv', sep='/'))
+        # Excluding the trials that didn't pass QC:
+        aggr = aggr[!aggr$trial %in% excluded_trials, ]
+    }
     # Computing blink latency:
     aggr$latency_samples = aggr$blank_sample_beg - aggr$cue_sample
     aggr$latency_time = aggr$blank_time_beg - aggr$cue_time + aggr$trial_time_beg

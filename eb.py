@@ -33,8 +33,8 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'1', u'cond': u'd', u'sess': u'1', u'cue_pred': u'1'}
+exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'm', u'sess': u'1', u'cue_pred': u'1'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 exp_name = exp_info['expt']

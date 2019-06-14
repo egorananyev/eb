@@ -21,14 +21,16 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-subj = 'subj-01'
-cond = 'cond-a'
-sess = 3
-shocky = T
+subj = 'subj-00'
+cond = 'cond-m'
+sess = 1
+shocky = F
+lab = T
 debug = F
 ## Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
-if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else{dropbox_dir='/Users/Egor/Dropbox/'}
+if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else {dropbox_dir='/Users/Egor/Dropbox/'}
+if(lab){dropbox_dir='/home/station3/Desktop/Egor/Dropbox/'}
 library(R.utils)
 sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs', sep='/'))
 # Getting the data directory:
@@ -110,15 +112,14 @@ if(cond == 'cond-c' | cond == 'cond-a'){
     excl_prohib_blink = NULL
 }
 
-
 # In all experimental (non-measurement) conditions:
 # Excluding trials with 'target blinks' (blinks during target presentation):
 if(cond!='cond-m'){
   excl_targ_blink_trials = merged$blank_time_end > (merged$targ_time -
-                                                      merged$trial_time_beg +
-                                                      eo_tolerance) &
+                                                    merged$trial_time_beg +
+                                                    eo_tolerance) &
                            merged$blank_time_end < (merged$resp_time - 
-                                                      merged$trial_time_beg)
+                                                    merged$trial_time_beg)
   if(sum(excl_targ_blink_trials, na.rm=T)){
     # Finding blanks that occur more than 'eyes open' tolerance post-target presentation.
     excl_targ_blink = data.frame(trial = unique(merged$trial[excl_targ_blink_trials]),
@@ -217,6 +218,6 @@ for(cur_trial in as.numeric(rownames(trials))){
 # write_exclusions(9)
 ## To estimate blink parameters based on the included trials:
 if(cond == 'cond-m'){
-  estimate_blinks(data_dir)
+  estimate_blinks(data_dir, !is.null(all_excl))
 }
 ```
