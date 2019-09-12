@@ -33,12 +33,10 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = False
-dummy_mode = False
+toshi = True
+dummy_mode = True
 drift_check = False
 # experiment variables:
-exp_name = 'eb1'
-trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
 cue_delay_min = 300  # the time frame before the location/blink cue
 cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
 blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
@@ -70,17 +68,25 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'', u'sess': u'', u'cue_pred': u''}
+exp_info = {u'expt': u'', u'subj': u'', u'cond': u'', u'sess': u'', u'cue_pred': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
-exp_name = exp_info['expt']
+print(exp_info['expt'])
+print(exp_info['subj'])
+exp_name = 'eb' + exp_info['expt']
+print('experiment name is ' + exp_name)
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
 if not dlg.OK:
     core.quit()  # user pressed cancel
 exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
 
-# Predictiveness of the cue:
-cue_pred = int(exp_info['cue_pred'])
+if exp_name == 'eb1':
+    # Predictiveness of the cue:
+    cue_pred = int(exp_info['cue_pred'])
+    trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
+elif exp_name == 'eb2':
+    cue_pred = 1
+    trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
 
 # Assigning conditions:
 debug = False
@@ -129,17 +135,21 @@ else:  # for 'd' or 'v'
 
 # Condition file:
 if not measure:
-    if exp_info['cond'] == 'd':
-        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_d' + '.xlsx')
-    else:
-        # same design for all non-d conditions:
-        if cue_pred:
-            exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_predictive.xlsx')
+    if exp_name == 'eb1':
+        if exp_info['cond'] == 'd':
+            exp_conditions = importConditions('cond-files/cond_' + exp_name + '_d' + '.xlsx')
         else:
-            exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_unpredictive.xlsx')
+            # same design for all non-d conditions:
+            if cue_pred:
+                exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_predictive.xlsx')
+            else:
+                exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_unpredictive.xlsx')
+    elif exp_name == 'eb2':
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')
 else:
     exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
-# The output directory will depend on whether the cue is predictive:
+
+# The output directory will depend on whether the cue is predictive (regardless of whether it's eb1 or eb2):
 if cue_pred:
     cue_dir = 'cp'
 else:
@@ -310,8 +320,9 @@ def exit_routine():
         if measure:
             data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
-            data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right', 'cue_valid',
-                            'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'cue_rt', 'corr_resp', 'rt']
+            data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right',
+                            'cue_valid', 'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'cue_rt',
+                            'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
 
@@ -532,7 +543,6 @@ for trial in trials:
             shutters_shut = False
             print('Opened the goggles "forcefully".')
             
-
     ## Behavioural response: measuring the reaction time:
     event.clearEvents()
     if not dummy_mode:
