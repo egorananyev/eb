@@ -21,25 +21,29 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-subj = 'subj-00'
-cond = 'cond-m'
-sess = 1
-shocky = F
-lab = T
+subj = 'subj-06'
+cond = 'cond-a'
+cue = 'cp'  # cp/cu = predictive/unpredictive
+sess = 3
 debug = F
-## Exclusions constants:
+# Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
-if(shocky){dropbox_dir='/Users/egora/Dropbox/'} else {dropbox_dir='/Users/Egor/Dropbox/'}
-if(lab){dropbox_dir='/home/station3/Desktop/Egor/Dropbox/'}
+# Handling directories:
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer=='shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
+if(computer=='acer'){ dropbox_dir='/Users/egora/Dropbox/' }
+if(computer=='station3'){ dropbox_dir='/home/station3/Desktop/Egor/Dropbox/' }
 library(R.utils)
 sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs', sep='/'))
 # Getting the data directory:
-data_dir = get_dir(subj, cond, sess, dropbox_dir)
+data_dir = get_dir(dropbox_dir, cue, subj, cond, sess)
 # Reading raw data:
 raw_data = read_em(data_dir)
 # Parsing samples:
 samples = parse_samples(raw_data)
 samples$yr[is.na(samples$yr)] = 0
+samples$xr = (samples$xr - (1152/2))/33.87  # normalizing to 0 and converting to dva
+samples$yr = (samples$yr - (864/2))/33.87  # normalizing to 0 and converting to dva
 # Parsing once-per-trial events
 trials = parse_trials(raw_data, cond)
 # Labeling trials in the 'samples' data frame with trial numbers & associating samples w/ time
@@ -102,12 +106,16 @@ if(cond == 'cond-c' | cond == 'cond-a'){
         # ... allowing some wiggle-time (ten samples) for pupil to be detected post-artblink
         merged$nonart[!artif_inds] = 1  # marking blanks that are not artificial blinks
     }
-    excl_prohib_blink_trials = with(merged, blank_time_beg > (cue_time - trial_time_beg) &
-                               blank_time_beg < (targ_time - trial_time_beg) & nonart)
-    excl_prohib_blink = data.frame(trial = unique(merged$trial[excl_prohib_blink_trials]),
-                                   excl_reason = 'prohibited blink')
-    # Important to account for situations when no blink has occurred on a given trial:
-    excl_prohib_blink = excl_prohib_blink[!is.na(excl_prohib_blink$trial),]
+    excl_prohib_blink_trials = with(merged, blank_time_end > (cue_time - trial_time_beg) &
+                                    blank_time_end < (targ_time - trial_time_beg) & nonart)
+    if(sum(excl_prohib_blink_trials > 0, na.rm = T)){
+      excl_prohib_blink = data.frame(trial = unique(merged$trial[excl_prohib_blink_trials]),
+                                     excl_reason = 'prohibited blink')
+      # Important to account for situations when no blink has occurred on a given trial:
+      excl_prohib_blink = excl_prohib_blink[!is.na(excl_prohib_blink$trial),]
+    } else {
+      excl_prohib_blink = NULL
+    }
 } else {
     excl_prohib_blink = NULL
 }
@@ -199,7 +207,7 @@ if(!debug){
 #   xlims = c(0, 3.1)
 # }
 # Taking every third row (sufficient sampling for visualization):
-sub_samples = samples[c(T,F,F),]
+sub_samples = samples[c(T,F,F,F,F,F,F,F,F,F),]
 # Cycling through trials to visualize
 for(cur_trial in as.numeric(rownames(trials))){
   # start.time <- Sys.time() 

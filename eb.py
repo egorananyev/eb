@@ -38,7 +38,7 @@ dummy_mode = False
 drift_check = False
 # experiment variables:
 exp_name = 'eb1'
-trial_n = 5  # trials per condition row; 15 gives 120 trials
+trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
 cue_delay_min = 300  # the time frame before the location/blink cue
 cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
 blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
@@ -56,7 +56,7 @@ if toshi:
 else:
     dr = (1152, 864)  # display resolution in px
     ds = 65  # distance to screen in cm
-    dd = (40.0, 30.0)  # display dimensions in cm ... 39.0 x 29.5
+    dd = (40.0, 30.0)  # display dimensions in cm: 39.0x29.5; ~34deg hori'ly, 1cm~0.85deg, 1deg~33.87px
 # fixation cross:
 fix_size = 0.8
 background_color = [-.5, -.5, -.5]
@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'expt': exp_name, u'subj': u'0', u'cond': u'm', u'sess': u'1', u'cue_pred': u'1'}
+exp_info = {u'expt': exp_name, u'subj': u'', u'cond': u'', u'sess': u'', u'cue_pred': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 exp_name = exp_info['expt']
@@ -139,6 +139,11 @@ if not measure:
             exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_unpredictive.xlsx')
 else:
     exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
+# The output directory will depend on whether the cue is predictive:
+if cue_pred:
+    cue_dir = 'cp'
+else:
+    cue_dir = 'cu'
 
 # Trial handler depending on the measure or experimental stage:
 if measure:
@@ -149,7 +154,7 @@ else:
     trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
-exp_dir = '..' + os.sep + 'data' + os.sep + exp_name
+exp_dir = '..' + os.sep + 'data' + os.sep + exp_name + os.sep + cue_dir
 if not os.path.exists(exp_dir):
     print('experiment directory does not exist')
     os.makedirs(exp_dir)
@@ -283,11 +288,11 @@ def frame_routine():
     return flip_time_
 
 # Monitoring the 'spacebar' press in artificial blink condition
-def monitor_cue_resp():
+def monitor_cue_resp(flip_time_, cue_rt_start_):
     space_key = event.getKeys(keyList=['space'])
     if len(space_key) > 0:
         print('subject pressed the Space key (Artificial Blink condition)')
-        cue_rt_ = flip_time - cue_rt_start
+        cue_rt_ = flip_time_ - cue_rt_start_
         return cue_rt_
     else:
         return 0
@@ -305,7 +310,7 @@ def exit_routine():
         if measure:
             data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
-            data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right', 'cue_valid',
+            data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right', 'cue_valid',
                             'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'cue_rt', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
@@ -387,6 +392,8 @@ for trial in trials:
         if shutters:
             # noinspection PyUnboundLocalVariable
             shutter_dur = np.random.normal(blink_dur_ave, blink_dur_std)
+            if shutter_dur > blink_time_window:
+                shutter_dur = blink_time_window - 0.11
         else:
             shutter_dur = 0
 
@@ -459,7 +466,11 @@ for trial in trials:
             trial_elapsed_frames += 1
         if shutters:
             if not cue_rt:
-                cue_rt = monitor_cue_resp()
+                cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
+                if cue_rt > 0:
+                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
+                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
+                    print('sent cue RT to the eye tracker')
 
     # Blink latency = the fixation period after the cue:
     if not dummy_mode:
@@ -472,7 +483,11 @@ for trial in trials:
             trial_elapsed_frames += 1
         if shutters:
             if not cue_rt:
-                cue_rt = monitor_cue_resp()
+                cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
+                if cue_rt > 0:
+                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
+                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
+                    print('sent cue RT to the eye tracker')
 
     # Real or simulated blink follow the same timeline:
     blink_time_period_frames = int(blink_time_window * frame_rate)
@@ -502,6 +517,21 @@ for trial in trials:
                     ser.write('c')
                     shutters_shut = False
                     print('Opened the goggles.')
+            if not cue_rt:
+                cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
+                if cue_rt > 0:
+                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
+                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
+                    print('sent cue RT to the eye tracker')
+    if shutters:
+        print('cue_rt ' + str(cue_rt))
+        if shutters_shut:
+            if not dummy_mode:
+                tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
+            ser.write('c')
+            shutters_shut = False
+            print('Opened the goggles "forcefully".')
+            
 
     ## Behavioural response: measuring the reaction time:
     event.clearEvents()
@@ -580,6 +610,7 @@ for trial in trials:
     if not measure:
         # noinspection PyUnboundLocalVariable
         output_mat[n_trials_done - 1] = {'exp_name': exp_name,
+                                         'cue_pred': cue_pred,
                                          'subj': exp_info['subj'],
                                          'cond': exp_info['cond'],
                                          'sess': exp_info['sess'],
@@ -591,7 +622,7 @@ for trial in trials:
                                          'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,
                                          'trial_end': flip_time,
-                                         'cur_rt': cue_rt,
+                                         'cue_rt': cue_rt,
                                          'corr_resp': corr_resp,
                                          'rt': rt}
     else:

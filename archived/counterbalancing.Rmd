@@ -1,0 +1,65 @@
+---
+title: "Counterbalancing"
+author: "Egor Ananyev"
+date: "2019-06-24"
+output: html_document
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+```{r}
+options(width=100)
+```
+
+# Permutation function
+```{r}
+# https://stackoverflow.com/questions/11095992/generating-all-distinct-permutations-of-a-list-in-r
+permutations <- function(n){
+    if(n==1){
+        return(matrix(1))
+    } else {
+        sp <- permutations(n-1)
+        p <- nrow(sp)
+        A <- matrix(nrow=n*p,ncol=n)
+        for(i in 1:n){
+            A[(i-1)*p+1:p,] <- cbind(i,sp+(sp>=i))
+        }
+        return(A)
+    }
+}
+```
+
+# Input
+```{r}
+# All conditions:
+conds = c('c', 'v', 'a')
+
+# All condition permutations:
+( all_perms = matrix(conds[permutations(3)], ncol=3) )
+
+# The number of combinations (e.g., 6 for three conditions above):
+num_combs = nrow(all_perms)
+
+# How many 6-subject 'cycles' to generate:
+subj_cycles = 10
+```
+
+# Output
+```{r}
+# The first six participants are going to be assigned as follows:
+for(session in c(1,2)){
+    print(paste0('SESSION ', as.character(session), ':'))
+    for(cur_cycle in c(1:subj_cycles)){
+        subj_to = cur_cycle * num_combs
+        subj_from = subj_to - num_combs + 1
+        this_order = sample(c(subj_from:subj_to))
+    }
+}
+```

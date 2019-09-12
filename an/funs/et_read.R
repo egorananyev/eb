@@ -3,8 +3,8 @@
 # 2019-01-12
 
 # Getting the data directory
-get_dir = function(subj, cond, sess, dropbox_dir){
-    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb1'), subj, cond, sep='/')
+get_dir = function(dropbox_dir, cue, subj, cond, sess){
+    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb1'), cue, subj, cond, sep='/')
     this_sess = paste0('sess-', as.character(sess))
     data_dir = paste(cond_dir, dir(cond_dir, pattern=this_sess), sep='/')
     # TEMP: for now, just taking the last directory:
@@ -109,15 +109,38 @@ parse_trials = function(raw_data, cond){
     }
     # Adding the on/off times for the shutter goggles:
     if(cond == 'cond-a'){
-        trials = cbind(trials, 
-                       data.frame(shutters_on=dfy(raw_data[grepl('SHUTTER_START', raw_data)], 
-                                                  c(3,5), 2),
-                                  shutters_off=dfy(raw_data[grepl('SHUTTER_END', raw_data)],
-                                                   c(3,5), 2)))
-        colnames(trials)[(ncol(trials)-3):ncol(trials)] = c('shutter_sample_beg',
-                                                            'shutter_time_beg',
-                                                            'shutter_sample_end',
-                                                            'shutter_time_end')
+        shutters_on = dfy(raw_data[grepl('SHUTTER_START', raw_data)], c(3,5), 2)
+        trials = cbind(trials, shutters_on)
+        # Due to a fixed bug, some shutter off fail to appear: accounting for that
+        shutters_off = shutters_off=dfy(raw_data[grepl('SHUTTER_END', raw_data)], c(3,5), 2)
+        # Registering the space bar presses in the AB condition:
+        cue_resp_lines = grepl('CUE_RESP_TIME', raw_data)
+        if(sum(cue_resp_lines) > 0){
+            space_time = dfy(raw_data[cue_resp_lines], c(3,5), 2)
+        } else {
+            space_time = NA
+        }
+        # Labeling the shutter-off time trials:
+        for(cur_trial in as.numeric(rownames(trials))){
+            this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
+            this_trial_sample_end = trials$trial_sample_end[cur_trial]
+            shutters_off$trial[shutters_off$X1 >= this_trial_sample_beg &
+                               shutters_off$X1 <= this_trial_sample_end] = cur_trial
+            if(!is.null(nrow(space_time))){
+                space_time$trial[space_time$X1 >= this_trial_sample_beg &
+                                 space_time$X1 <= this_trial_sample_end] = cur_trial
+            }
+        }
+        trials = merge(trials, shutters_off, by='trial', all=T)
+        if(!is.null(nrow(space_time))){
+            trials = merge(trials, space_time, by='trial', all=T)
+        } else {
+            trials$na1 = NA
+            trials$na2 = NA
+        }
+        colnames(trials)[(ncol(trials)-5):ncol(trials)] = c('shutter_sample_beg','shutter_time_beg',
+                                                            'shutter_sample_end','shutter_time_end',
+                                                            'cue_resp_sample','cue_resp_time')
     }
     # For sample rate check, the last column should be all 1000 (corresponding to Hz):
     trials$tot_trial_samples = trials$trial_sample_end - trials$trial_sample_beg
@@ -176,12 +199,14 @@ parse_blanks = function(raw_data, trials){
         }
         # The following can only be run if the trial_blanks is non-empty:
         if(!is.null(trial_blanks)){
-            trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
-            this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
-            trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
-            this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
-            trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
-            all_blanks = rbind(all_blanks, trial_blanks)
+            if(nrow(trial_blanks) > 0){
+                trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
+                this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
+                trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
+                this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
+                trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
+                all_blanks = rbind(all_blanks, trial_blanks)
+            }
         }
     }
     all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
