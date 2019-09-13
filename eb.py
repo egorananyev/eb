@@ -34,8 +34,8 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 drift_check = False
 # experiment variables:
 cue_delay_min = 300  # the time frame before the location/blink cue
@@ -647,7 +647,7 @@ for trial in trials:
                                          'cue_delay': cue_delay,
                                          'targ_right': trial['targ_right'],
                                          'cue_valid': trial['cue_valid'],
-                                         'targ_soa': trial['soa'],
+                                         'targ_soa': this_targ_soa,
                                          'blink_latency': blink_latency,
                                          'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,

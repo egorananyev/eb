@@ -3,8 +3,8 @@
 # 2019-01-12
 
 # Getting the data directory
-get_dir = function(dropbox_dir, cue, subj, cond, sess){
-    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb1'), cue, subj, cond, sep='/')
+get_dir = function(dropbox_dir, eb, cue, subj, cond, sess){
+    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
     this_sess = paste0('sess-', as.character(sess))
     data_dir = paste(cond_dir, dir(cond_dir, pattern=this_sess), sep='/')
     # TEMP: for now, just taking the last directory:
