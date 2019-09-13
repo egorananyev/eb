@@ -21,7 +21,7 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 debug = F
 short_rt_cutoff = 0.2
 long_rt_cutoff = 1
@@ -35,6 +35,7 @@ all_data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb1/')
 conds = c('cond-a', 'cond-c', 'cond-v')
 cue_conds = c('cp', 'cu')  # cue predictive and unpredictive
 ds = data.frame()
+et = data.frame()
 excl = data.frame()
 # cur_cue_cond = cue_conds[1]
 for(cur_cue_cond in cue_conds){
@@ -51,8 +52,9 @@ for(cur_cue_cond in cue_conds){
       # cur_sess = sesss[1]  # temp
       for(cur_sess in sesss){
         cur_sess_dir = paste(cur_cond_dir, cur_sess, sep='/')
-        # print(cur_sess_dir)
+        print(cur_sess_dir)
         cur_ds = read.csv(paste(cur_sess_dir, 'beh_out.csv', sep='/'))
+        # Making sure 'cue_pred' column exists; if not, writing it in:
         if(!'cue_pred' %in% colnames(cur_ds)){
           cur_ds$cue_pred = cur_cue_bin
         } else {
@@ -60,9 +62,29 @@ for(cur_cue_cond in cue_conds){
             print('ERROR! Cue predictiveness condition does not match the data!')
           }
         }
+        # Reading the eye-tracking data:
+        cur_et = read.csv(paste(cur_sess_dir, 'eye_tracking.csv', sep='/'))
+        cur_et = cbind(data.frame(subj=cur_subj, cond=cur_cond, sess=cur_sess),
+                       cur_et)
+        # For eye-tracking data, making sure that the extra columns from AB cond are present:
+        if(!cur_cond == 'a'){
+          cur_et = cbind(data.frame(shutter_sample_beg = NA, shutter_time_beg = NA,
+                                    shutter_sample_end = NA, shutter_time_end = NA,
+                                    cue_resp_sample = NA, cue_resp_time = NA),
+                         cur_et)
+          # cur_et$shutter_sample_beg = NA
+          # cur_et$shutter_time_beg = NA
+          # cur_et$shutter_sample_end = NA
+          # cur_et$shutter_time_end = NA
+          # cur_et$cue_resp_sample = NA
+          # cur_et$cue_resp_time = NA
+        }
         # print(colnames(cur_ds))  # debug
         # ds = cur_ds  # temp
         ds = rbind(ds, cur_ds)
+        print(colnames(et))
+        print(colnames(cur_et))
+        et = rbind(et, cur_et)
         excl_file = paste(cur_sess_dir, 'exclude_trials.csv', sep='/')
         if(file.exists(excl_file)){
           excl_file_ds = read.csv(excl_file)
@@ -83,7 +105,7 @@ head(ds)
 # print(excl)
 ```
 
-# Cleaning data
+# Cleaning the data
 ```{r}
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt<short_rt_cutoff, c('subj', 'cue_pred', 'cond', 'sess', 'trial')]
@@ -113,6 +135,14 @@ library(dplyr)
 ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial))
 # Excluding trials based on the quality control & the RT exclusion criteria:
 ds = anti_join(ds, excl, by=c('subj', 'cue_pred', 'cond', 'sess', 'trial'))
+```
+
+# Merging eye tracking and behavioral data
+```{r}
+# Excluding dropped trials from the eye tracking data set before merging:
+
+# Merging:
+dsa = merge(ds, )
 ```
 
 # Summary stats
@@ -208,25 +238,32 @@ summary(lmer(rt~Cond*cue_valid*cue_pred + (1|subj), data=ds))
 
 ## Bayes Factor
 ```{r}
-library(BayesFactor)
-bf_ss = ds
-bf_ss$subj <- factor(bf_ss$subj)
-bf_ss$AB = 0
-bf_ss$AB[bf_ss$cond=='a'] = 1
-bf_ss$PB = 0
-bf_ss$PB[bf_ss$cond=='v'] = 1
-bf_ss$NB = 0
-bf_ss$NB[bf_ss$cond=='c'] = 1
-mRes = 1/generalTestBF(rt ~ cue_valid * cue_pred + subj, 
-                  data=bf_ss[bf_ss$NB==1,], whichRandom='subj', neverExclude='subj', 
-                  whichModels='top')
-print(mRes)
-mRes = 1/generalTestBF(rt ~ AB * cue_valid * cue_pred + subj, 
-                  data=bf_ss[bf_ss$PB==0,], whichRandom='subj', neverExclude='subj', 
-                  whichModels='top')
-print(mRes)
-mRes = 1/generalTestBF(rt ~ PB * cue_valid * cue_pred + subj, 
-                  data=bf_ss[bf_ss$AB==0,], whichRandom='subj', neverExclude='subj', 
-                  whichModels='top')
-print(mRes)
+# library(BayesFactor)
+# bf_ss = ds
+# bf_ss$subj <- factor(bf_ss$subj)
+# bf_ss$AB = 0
+# bf_ss$AB[bf_ss$cond=='a'] = 1
+# bf_ss$PB = 0
+# bf_ss$PB[bf_ss$cond=='v'] = 1
+# bf_ss$NB = 0
+# bf_ss$NB[bf_ss$cond=='c'] = 1
+# mRes = 1/generalTestBF(rt ~ cue_valid * cue_pred + subj, 
+#                   data=bf_ss[bf_ss$NB==1,], whichRandom='subj', neverExclude='subj', 
+#                   whichModels='top')
+# print(mRes)
+# mRes = 1/generalTestBF(rt ~ AB * cue_valid * cue_pred + subj, 
+#                   data=bf_ss[bf_ss$PB==0,], whichRandom='subj', neverExclude='subj', 
+#                   whichModels='top')
+# print(mRes)
+# mRes = 1/generalTestBF(rt ~ PB * cue_valid * cue_pred + subj, 
+#                   data=bf_ss[bf_ss$AB==0,], whichRandom='subj', neverExclude='subj', 
+#                   whichModels='top')
+# print(mRes)
 ```
+
+# Blink-related analysis
+
+## Plots
+
+
+## Analysis
