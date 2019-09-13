@@ -24,6 +24,7 @@ import numpy as np
 import os
 from subprocess import call  # for running shell commands from within Python
 from psychopy.data import TrialHandler, importConditions
+from psychopy.core import wait
 import pandas as pd
 from datetime import datetime
 
@@ -71,14 +72,12 @@ targ_color = [0, 0, 0]
 exp_info = {u'expt': u'', u'subj': u'', u'cond': u'', u'sess': u'', u'cue_pred': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
-print(exp_info['expt'])
-print(exp_info['subj'])
-exp_name = 'eb' + exp_info['expt']
-print('experiment name is ' + exp_name)
-dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)  # dialogue box
+dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
 if not dlg.OK:
     core.quit()  # user pressed cancel
 exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
+exp_name = 'eb' + exp_info['expt']
+print('experiment name is ' + exp_name)
 
 if exp_name == 'eb1':
     # Predictiveness of the cue:
@@ -321,8 +320,8 @@ def exit_routine():
             data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
             data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right',
-                            'cue_valid', 'blink_latency', 'shutter_dur', 'trial_start', 'trial_end', 'cue_rt',
-                            'corr_resp', 'rt']
+                            'cue_valid', 'targ_soa', 'blink_latency', 'shutter_dur', 'trial_start', 'trial_end',
+                            'cue_rt', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
 
@@ -391,6 +390,13 @@ for trial in trials:
         else:
             print('target location: Left')
         targ.pos = (targ_off_x * this_targ_loc, 0)
+
+        # Target SOA:
+        if exp_name == 'eb2':
+            this_targ_soa = trial['soa'] / 1000  # taking SOA from conf-file and converting to seconds (from ms)
+            print('target SOA: ' + str(this_targ_soa) + ' s')
+        elif exp_name == 'eb1':
+            this_targ_soa = 0
 
         # Cue validity:
         if trial['cue_valid']:
@@ -548,6 +554,19 @@ for trial in trials:
     if not dummy_mode:
         tracker.sendMessage('RESPONSE_ONSET %.2f' % flip_time)
     if not measure:
+
+        # In the [eb2] experiment, introducing a delay period after which the target is displayed
+        if exp_name == 'eb2' and this_targ_soa > 0:
+
+            # # Initiating the delay by flipping once:
+            # flip_time = frame_routine()
+
+            # Waiting for the specified time:
+            wait(this_targ_soa)
+
+        # Important to measure the flip time for accurate RT measurement just below:
+        flip_time = frame_routine()
+
         # Trial components pertaining to behavioural response:
         targ_resp_given = False
         rt_start = flip_time
@@ -628,6 +647,7 @@ for trial in trials:
                                          'cue_delay': cue_delay,
                                          'targ_right': trial['targ_right'],
                                          'cue_valid': trial['cue_valid'],
+                                         'targ_soa': trial['soa'],
                                          'blink_latency': blink_latency,
                                          'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,
