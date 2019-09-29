@@ -1,5 +1,5 @@
 ---
-title: "[eb1] Measurement - Quality Control"
+title: "[eb1] Quality Control"
 author: "Egor Ananyev"
 date: "2019-01-04"
 output:
@@ -21,16 +21,16 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-eb = '2'
-subj = 'subj-00'
-cond = 'cond-m'
+eb = '1'
+subj = 'subj-25'
+cond = 'cond-c'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-sess = 1
+sess = 3
 debug = F
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer=='acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 if(computer=='station3'){ dropbox_dir='/home/station3/Desktop/Egor/Dropbox/' }
@@ -210,6 +210,7 @@ if(!debug){
 # Taking every third row (sufficient sampling for visualization):
 sub_samples = samples[c(T,F,F,F,F,F,F,F,F,F),]
 # Cycling through trials to visualize
+# cur_trial = 1  #temp
 for(cur_trial in as.numeric(rownames(trials))){
   # start.time <- Sys.time() 
   plot_qc(sub_samples, trials)

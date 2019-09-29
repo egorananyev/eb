@@ -21,7 +21,7 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 debug = F
 short_rt_cutoff = 0.2
 long_rt_cutoff = 1
@@ -29,7 +29,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
-if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
+if(computer == 'shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_t.R', sep='/'))
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_U.R', sep='/'))
@@ -333,71 +333,24 @@ dsa$tot_blank_time = 1000 * (dsa$tot_blank_time)
 dsa$tot_blank_time_c = dsa$tot_blank_time - mean(dsa$tot_blank_time)
 dsa$blank_time_beg = 1000 * (dsa$blank_time_beg)
 dsa$blank_time_beg_c = dsa$blank_time_beg - mean(dsa$blank_time_beg)
-head(dsa[,c('blank_time_beg', 'cue_time', 'trial_time_beg')])
-dsa$blink_latency = dsa$blank_time_beg - 1000 * (dsa$cue_time - dsa$trial_time_beg)
 ```
 
 ## Blink duration
 
 ### PB
-```{r}
-## Linear model:
-summary(lmer(RT~tot_blank_time_c*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Prompted',]))
-# summary(lm(RT~tot_blank_time_c*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa[dsa$Cond=='Artificial',]))
-```
-
 ```{r, fig.width=5.5, fig.height=2.5}
 bdur_rt = ddply(dsa[dsa$Cond=='Prompted',], .(subj, cue_pred_full, cue_valid_full), summarise,
-                RT=mean(RT), bdur=mean(tot_blank_time), bdur_min=min(tot_blank_time),
-                bdur_max=max(tot_blank_time), bdur_sd=sd(tot_blank_time), 
-                bdur_supra300=length(tot_blank_time>300))
+                bdur = mean(tot_blank_time), RT = mean(RT))
 ggplot(bdur_rt, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
   stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
   facet_grid(cols=vars(cue_pred_full)) + xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
   guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + xlim(75, 225) +
   theme(legend.position=c(.09, .75), legend.title=element_blank())
-```
-
-#### Individual slopes
-```{r, fig.width=5.5, fig.height=2.5}
-p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + #geom_point(aes(color=factor(subj))) + 
-  geom_line(stat='smooth', method='lm', aes(linetype=factor(cue_valid_full), color=factor(subj), 
-                                            alpha=.01), se=F) +
-  geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(cue_valid_full))) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + 
-  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
-  guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
-pdf('box_corr_slopes.pdf', width=5.5, height=4.0)
-plot(p)
-dev.off()
-```
-
-#### Average slopes
-```{r, fig.width=5.5, fig.height=2.5}
-p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + 
-  geom_line(stat='smooth', method='lm', size=1, aes(color=factor(cue_valid_full))) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + 
-  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
-  guides(color=guide_legend(title=cue_valid_name), alpha=F) + theme_bw()
-plot(p)
-```
-
-#### Correlations
-```{r, fig.width=5.5, fig.height=2.5}
-bdur_rt_corr = ddply(dsa, .(Cond, subj, cue_pred_full, cue_valid_full), summarise,
-                corr = cor(tot_blank_time, RT))
-p = ggplot(data=bdur_rt_corr, aes(x=cue_valid_full, y=corr, fill=cue_valid_full, alpha=0.5)) + 
-    geom_boxplot() + facet_grid(Cond~cue_pred_full) + xlab('Cue Validity') + 
-    ylab('Pearson\'s Correlation') + theme_bw() + 
-    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05) + 
-    theme(legend.position='none', panel.grid.minor=element_blank(), 
-          plot.title = element_text(hjust = 0.5)) + ggtitle('RT x Blink Duration Correlation')
-pdf('box_corr_vals.pdf', width=5.5, height=3.5)
-plot(p)
-dev.off()
+## Linear model:
+summary(lmer(RT~tot_blank_time_c*cue_valid_c*cue_pred_c + (1|subj), 
+             data=dsa[dsa$Cond=='Prompted',]))
+summary(lm(RT~tot_blank_time_c*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Prompted',]))
+summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa[dsa$Cond=='Prompted',]))
 ```
 
 ### PB vs AB
@@ -496,18 +449,4 @@ ggplot(bota_rt, aes(x=bota, y=RT)) + geom_point(aes(color=factor(cue_valid_full)
 summary(lmer(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c + (1|subj), 
              data=dsa[dsa$Cond=='Artificial',]))
 summary(lm(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Artificial',]))
-```
-
-## Blink summary stats
-```{r}
-(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
-      bdur=mean(tot_blank_time), bdur_sd=sd(tot_blank_time),
-      bdur_min=min(tot_blank_time), bdur_max=max(tot_blank_time), 
-      bdur_sub300=sum(tot_blank_time<300), bdur_supra300=sum(tot_blank_time>300),
-      total=length(tot_blank_time)))
-(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
-      blat=mean(blink_latency), blat_sd=sd(blink_latency),
-      blat_min=min(blink_latency), blat_max=max(blink_latency), 
-      blat_sub300=sum(blink_latency<300), blat_supra300=sum(blink_latency>300),
-      total=length(blink_latency)))
 ```

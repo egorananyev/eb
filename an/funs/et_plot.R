@@ -9,7 +9,7 @@ plot_qc = function(samples, trials){
     p = p + geom_line(aes(y=((psr-mean(psr))/100), colour='Pupil'))  # colour='Pupil'))
     p = p + scale_y_continuous(sec.axis = sec_axis(~.*5, name='Pupil Diameter (a.u.)'),limits=ylims)
     # p = p + xlim(xlims)
-    p = p + scale_colour_manual(values=c('blue', 'magenta'))
+    p = p + scale_colour_manual(values=c('blue', 'chocolate'))
     # number of blanks in this trial:
     numof_blanks = sum(blanks$trial==cur_trial)
     if(numof_blanks >= 1){
@@ -63,7 +63,7 @@ plot_qc = function(samples, trials){
     } else{
         p = p + theme_bw()
     }
-    p = p + theme(axis.title.y.right = element_text(color='magenta'),
+    p = p + theme(axis.title.y.right = element_text(color='chocolate'),
               axis.title.y.left = element_text(color='blue'),
               legend.position = 'none')
     suppressWarnings(print(p))

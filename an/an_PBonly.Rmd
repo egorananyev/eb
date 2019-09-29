@@ -21,7 +21,7 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
 debug = F
 short_rt_cutoff = 0.2
 long_rt_cutoff = 1
@@ -29,7 +29,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
-if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
+if(computer == 'shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_t.R', sep='/'))
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs/BF_U.R', sep='/'))
@@ -163,7 +163,7 @@ ds$RT = 1000 * ds$rt
 # Merging eye tracking and behavioral data
 ```{r}
 # For analyzing eye blink parameters alongside behavioral data, only prompted blink cond is meaningful:
-et_filt = et[et$cond!='c',]
+et_filt = et[et$cond=='v',]
 # (This could have been done at the input stage, but I may need post-trial blinks at some point.)
 
 # In the <eb> dataset, only keeping blinks that occurs between the cue and the target:
@@ -184,7 +184,7 @@ et_filt3 = anti_join(et_filt2, num_blanks[num_blanks$num_blanks>1,],
 # nrow(et_filt2) - nrow(et_filt3)
 
 # Merging:
-dsa = merge(ds[ds$cond!='c',], et_filt3, by=c('subj', 'cue_pred', 'sess', 'trial', 'cond'))
+dsa = merge(ds[ds$cond=='v',], et_filt3, by=c('subj', 'cue_pred', 'sess', 'trial'))
 ```
 
 # Summary stats
@@ -240,6 +240,24 @@ plot(plot_dens(0, 'Unpredictive Cue'))
 plot(plot_dens(1, 'Predictive Cue'))
 ```
 
+### Box plots
+```{r, fig.width=3.5, fig.height=2.5}
+sumss = ddply(ds, .(subj, cue_pred, CueValid, Cond), summarise, RT=median(RT))
+plot_box = function(cue_pred_val, plot_title){
+  ggplot(data=sumss[sumss$cue_pred==cue_pred_val,], aes(x=CueValid, y=RT, colour=CueValid)) + 
+    geom_boxplot() + facet_grid(.~Cond) + xlab('Cue Validity') + theme_bw() + #ylim(250,500) +
+    theme(legend.position='none', panel.grid.minor=element_blank()) + ggtitle(plot_title)
+}
+( p = plot(plot_box(0, 'Unpredictive Cue')) )
+pdf('box_uc.pdf', width=3.5, height=2.5)
+plot(p)
+dev.off()
+( p = plot(plot_box(1, 'Predictive Cue')) )
+pdf('box_pc.pdf', width=3.5, height=2.5)
+plot(p)
+dev.off()
+```
+
 ### Cueing advantage (invalid - valid cue)
 ```{r, fig.width=4.5, fig.height=2.5}
 sumss_valid = ddply(ds[ds$CueValid=='Valid',], .(subj, CuePredFull, Cond), summarise, 
@@ -258,24 +276,58 @@ plot(p)
 pdf('box_adv_med.pdf', width=4.5, height=2.5)
 plot(p)
 ```
+
+```{r, fig.width=4.5, fig.height=2.5}
+## Violin plots
+# p = ggplot(data=sumss_adv, aes(x=Cond, y=rt_adv, fill=Cond)) + 
+#     geom_violin() + facet_grid(.~CuePredFull) + xlab('Eye Blink Condition') + 
+#     ylab('RT Invalid - Valid (ms)') + theme_bw() + ylim(-100, 100) +
+#     geom_point(aes(fill=Cond), size=2, shape=21, alpha=.6, 
+#                position=position_jitterdodge(jitter.width=.2)) +
+#     theme(legend.position='none', panel.grid.minor=element_blank()) + ggtitle('Cueing Advantage')
+# plot(p)
+# pdf('box_adv_violin.pdf', width=4.5, height=2.5)
+# plot(p)
+# dev.off()
+```
+
+```{r, fig.width=4.5, fig.height=2.5}
+## Same thing but with means instead of medians:
+# sumss_valid = ddply(ds[ds$CueValid=='Valid',], .(subj, CuePredFull, Cond), summarise, 
+#                     RT_valid=mean(RT))
+# sumss_invalid = ddply(ds[ds$CueValid=='Invalid',], .(subj, CuePredFull, Cond), summarise, 
+#                       RT_invalid=mean(RT))
+# sumss_adv = merge(sumss_valid, sumss_invalid, by=c('subj', 'CuePredFull', 'Cond'))
+# sumss_adv$rt_adv = sumss_adv$RT_invalid - sumss_adv$RT_valid
+# sumss_adv$rt_adv = sumss_adv$rt_adv * 1000
+# p = ggplot(data=sumss_adv, aes(x=Cond, y=rt_adv, fill=Cond, alpha=0.5)) + 
+#     geom_boxplot() + facet_grid(.~CuePredFull) + xlab('Eye Blink Condition') + 
+#     ylab('RT Invalid - Valid (ms)') + theme_bw() + 
+#     theme(legend.position='none', panel.grid.minor=element_blank()) + ggtitle('Cueing Advantage')
+# pdf('box_adv_mean.pdf', width=4.5, height=2.5)
+# plot(p)
+# dev.off()
+```
+
 # Analyses
 
 ## Linear models
-
-### Prompted vs. everything
 ```{r}
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
 summary(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
-summary(lm(RT~Cond*cue_valid_c*cue_pred_c, data=ds))
-```
-
-### No Blink vs everything
-```{r}
-ds$Cond <- factor(ds$Cond, c('NoBlink','Artificial','Prompted')) #this works for lm
-summary(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
 summary(lm(RT~Cond*cue_valid*cue_pred, data=ds))
 summary(lm(RT~Cond*cue_valid_c*cue_pred_c, data=ds))
+# summary(lm(RT~Cond*cue_valid*cue_pred, data=ds))  # switch to lme4 for mixed models
+# 1 / generalTestBF(RT ~ cond*cue_valid, data=ds, whichModels='top')
+# summary(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+## Centered data
+# summary(lm(RT~Cond*cue_valid_c*cue_pred_c, data=ds))  # switch to lme4 for mixed models
+# summary(lmer(RT~Cond*cue_valid_c*cue_pred_c + (1|subj), data=ds))
+## Prompted versus No Blink:
+# summary(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds[ds$Cond!='Artificial',]))
+## Prompted versus Artificial Blink:
+# summary(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds[ds$Cond!='NoBlink',]))
 ```
 
 ## Bayes Factor
@@ -289,6 +341,18 @@ bf_ss$PB = 0
 bf_ss$PB[bf_ss$cond=='v'] = 1
 bf_ss$NB = 0
 bf_ss$NB[bf_ss$cond=='c'] = 1
+# # Effect of cue validity / predictiveness in the no-blink condition:
+# mRes = 1/generalTestBF(RT ~ cue_valid * cue_pred + subj, data=bf_ss[bf_ss$NB==1,], 
+#                        whichRandom='subj', neverExclude='subj', whichModels='top')
+# print(mRes)
+# # Prompted vs No Blink:
+# mRes = 1/generalTestBF(RT ~ PB * cue_valid * cue_pred + subj, data=bf_ss[bf_ss$AB==0,], 
+#                        whichRandom='subj', neverExclude='subj', whichModels='top')
+# print(mRes)
+# # Prompted vs Artificial:
+# mRes = 1/generalTestBF(RT ~ PB * cue_valid * cue_pred + subj, data=bf_ss[bf_ss$NB==0,], 
+#                        whichRandom='subj', neverExclude='subj', whichModels='top')
+# print(mRes)
 ```
 
 ### Predictive cue
@@ -309,14 +373,6 @@ mRes = 1/generalTestBF(RT ~ PB * cue_valid + subj,
 print(mRes)
 ```
 
-#### No blink vs artificial blink
-```{r}
-mRes = 1/generalTestBF(RT ~ AB * cue_valid + subj,
-                  data=bf_ss[bf_ss$PB==0 & bf_ss$cue_pred==1,], whichRandom='subj', 
-                  neverExclude='subj', whichModels='top')
-print(mRes)
-```
-
 # Blink-related analysis
 
 ## Cleaning up the combined dataset
@@ -333,181 +389,49 @@ dsa$tot_blank_time = 1000 * (dsa$tot_blank_time)
 dsa$tot_blank_time_c = dsa$tot_blank_time - mean(dsa$tot_blank_time)
 dsa$blank_time_beg = 1000 * (dsa$blank_time_beg)
 dsa$blank_time_beg_c = dsa$blank_time_beg - mean(dsa$blank_time_beg)
-head(dsa[,c('blank_time_beg', 'cue_time', 'trial_time_beg')])
-dsa$blink_latency = dsa$blank_time_beg - 1000 * (dsa$cue_time - dsa$trial_time_beg)
 ```
 
 ## Blink duration
-
-### PB
-```{r}
-## Linear model:
-summary(lmer(RT~tot_blank_time_c*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Prompted',]))
-# summary(lm(RT~tot_blank_time_c*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa[dsa$Cond=='Artificial',]))
-```
-
 ```{r, fig.width=5.5, fig.height=2.5}
-bdur_rt = ddply(dsa[dsa$Cond=='Prompted',], .(subj, cue_pred_full, cue_valid_full), summarise,
-                RT=mean(RT), bdur=mean(tot_blank_time), bdur_min=min(tot_blank_time),
-                bdur_max=max(tot_blank_time), bdur_sd=sd(tot_blank_time), 
-                bdur_supra300=length(tot_blank_time>300))
+bdur_rt = ddply(dsa, .(subj, cue_pred_full, cue_valid_full), summarise,
+                bdur = mean(tot_blank_time), RT = mean(RT))
 ggplot(bdur_rt, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
   stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
   facet_grid(cols=vars(cue_pred_full)) + xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
   guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + xlim(75, 225) +
   theme(legend.position=c(.09, .75), legend.title=element_blank())
-```
-
-#### Individual slopes
-```{r, fig.width=5.5, fig.height=2.5}
-p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + #geom_point(aes(color=factor(subj))) + 
-  geom_line(stat='smooth', method='lm', aes(linetype=factor(cue_valid_full), color=factor(subj), 
-                                            alpha=.01), se=F) +
-  geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(cue_valid_full))) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + 
-  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
-  guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
-pdf('box_corr_slopes.pdf', width=5.5, height=4.0)
-plot(p)
-dev.off()
-```
-
-#### Average slopes
-```{r, fig.width=5.5, fig.height=2.5}
-p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + 
-  geom_line(stat='smooth', method='lm', size=1, aes(color=factor(cue_valid_full))) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + 
-  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
-  guides(color=guide_legend(title=cue_valid_name), alpha=F) + theme_bw()
-plot(p)
-```
-
-#### Correlations
-```{r, fig.width=5.5, fig.height=2.5}
-bdur_rt_corr = ddply(dsa, .(Cond, subj, cue_pred_full, cue_valid_full), summarise,
-                corr = cor(tot_blank_time, RT))
-p = ggplot(data=bdur_rt_corr, aes(x=cue_valid_full, y=corr, fill=cue_valid_full, alpha=0.5)) + 
-    geom_boxplot() + facet_grid(Cond~cue_pred_full) + xlab('Cue Validity') + 
-    ylab('Pearson\'s Correlation') + theme_bw() + 
-    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05) + 
-    theme(legend.position='none', panel.grid.minor=element_blank(), 
-          plot.title = element_text(hjust = 0.5)) + ggtitle('RT x Blink Duration Correlation')
-pdf('box_corr_vals.pdf', width=5.5, height=3.5)
-plot(p)
-dev.off()
-```
-
-### PB vs AB
-```{r, fig.width=5.5, fig.height=3.5}
-bdur_rt = ddply(dsa, .(subj, Cond, cue_pred_full, cue_valid_full), summarise,
-                bdur = mean(tot_blank_time), RT = mean(RT))
-p = ggplot(bdur_rt, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
-  stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + xlab('Blink Duration (ms)') + 
-  ylab('Reaction Time (ms)')+ guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
-  xlim(75, 225) + theme(legend.position=c(.11, .89), legend.title=element_blank(),
-                        legend.box.background = element_rect(colour = "black"),
-                        legend.spacing.y = unit(0, "mm"))
 ## Linear model:
-# summary(lm(RT~tot_blank_time*cue_valid*cue_pred, data=dsa))
-# summary(lmer(RT~tot_blank_time*cue_valid*cue_pred*Cond + (1|subj), data=dsa))
-pdf('bdur_pb-ab.pdf', width=4.7, height=3.7)
-plot(p)
-dev.off()
-summary(lmer(RT~tot_blank_time_c*cue_valid_c*cue_pred_c*Cond + (1|subj), data=dsa))
+# summary(lm(rt.x~tot_blank_time*cue_valid*cue_pred, data=dsa))
+summary(lmer(rt.x~tot_blank_time*cue_valid*cue_pred + (1|subj), data=dsa))
+# summary(lmer(rt.x~tot_blank_time_c*cue_valid_c*cue_pred_c + (1|subj), data=dsa))
 ```
 
 ## Blink latency
-
-### PB
 ```{r, fig.width=5.5, fig.height=2.5}
-blat_rt = ddply(dsa[dsa$Cond=='Prompted',], .(subj, cue_pred_full, cue_valid_full), summarise,
-                blat = mean(blank_time_beg), RT = mean(RT))
-p = ggplot(blat_rt, aes(x=blat, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
+blat_rt = ddply(dsa, .(subj, cue_pred_full, cue_valid_full), summarise,
+                blat = mean(blank_time_beg), RT = mean(rt.x))
+ggplot(blat_rt, aes(x=blat, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
   stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
   facet_grid(cols=vars(cue_pred_full)) + xlab('Blink Latency (ms)') + ylab('Reaction Time (ms)') +
   guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
-  theme(legend.position=c(.09, .75), legend.title=element_blank(), 
-        legend.box.background = element_rect(colour = "black"),
-        legend.spacing.y = unit(0, "mm"))
-pdf('blat_pb.pdf', width=5.5, height=2.2)
-plot(p)
-dev.off()
+  theme(legend.position=c(.09, .75), legend.title=element_blank())
 ## Linear model:
-summary(lmer(RT~blank_time_beg_c*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~blank_time_beg_c*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Prompted',]))
-```
-
-### AB
-```{r, fig.width=5.5, fig.height=2.5}
-blat_rt = ddply(dsa[dsa$Cond=='Artificial',], .(subj, cue_pred_full, cue_valid_full), summarise,
-                blat = mean(blank_time_beg), RT = mean(RT))
-p = ggplot(blat_rt, aes(x=blat, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
-  stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
-  facet_grid(cols=vars(cue_pred_full)) + xlab('Blink Latency (ms)') + ylab('Reaction Time (ms)') +
-  guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
-  theme(legend.position=c(.09, .75), legend.title=element_blank(), 
-        legend.box.background = element_rect(colour = "black"),
-        legend.spacing.y = unit(0, "mm"))
-pdf('blat_ab.pdf', width=5.5, height=2.2)
-plot(p)
-dev.off()
-## Linear model:
-summary(lmer(RT~blank_time_beg_c*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Artificial',]))
-summary(lm(RT~blank_time_beg_c*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Artificial',]))
+# summary(lm(rt.x~blank_time_beg*cue_valid*cue_pred, data=dsa))
+summary(lmer(RT~blank_time_beg*cue_valid*cue_pred + (1|subj), data=dsa))
+# summary(lmer(rt.x~blank_time_beg_c*cue_valid_c*cue_pred_c + (1|subj), data=dsa))
 ```
 
 ## Blink-target asynchrony
-
-### PB
 ```{r, fig.width=5.5, fig.height=2.5}
-bota_rt = ddply(dsa[dsa$Cond=='Prompted',], .(subj, cue_pred_full, cue_valid_full), summarise,
-                bota = mean(blink_target_asynchrony), RT = mean(RT))
-p = ggplot(bota_rt, aes(x=bota, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
+bota_rt = ddply(dsa, .(subj, cue_pred_full, cue_valid_full), summarise,
+                bota = mean(blink_target_asynchrony), RT = mean(rt.x))
+ggplot(bota_rt, aes(x=bota, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
   stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
   facet_grid(cols=vars(cue_pred_full)) + xlab('Blink Offset to Target Asynchrony (ms)') + 
   ylab('Reaction Time (ms)') + guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() +
   theme(legend.position='none')
-pdf('bota_pb.pdf', width=5.5, height=2.2)
-plot(p)
-dev.off()
 ## Linear model:
-summary(lmer(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Prompted',]))
-summary(lm(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Prompted',]))
-```
-
-### AB
-```{r, fig.width=5.5, fig.height=2.5}
-bota_rt = ddply(dsa, .(subj, Cond, cue_pred_full, cue_valid_full), summarise,
-                bota = mean(blink_target_asynchrony), RT = mean(RT))
-ggplot(bota_rt, aes(x=bota, y=RT)) + geom_point(aes(color=factor(cue_valid_full))) + 
-  stat_smooth(method='lm', aes(color=factor(cue_valid_full)), alpha=.2) +
-  facet_grid(cols=vars(cue_pred_full), rows=vars(Cond)) + 
-  xlab('Blink Offset to Target Asynchrony (ms)') + 
-  ylab('Reaction Time (ms)') + guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() +
-  theme(legend.position='none')
-## Linear model:
-summary(lmer(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c + (1|subj), 
-             data=dsa[dsa$Cond=='Artificial',]))
-summary(lm(RT~blink_target_asynchrony*cue_valid_c*cue_pred_c, data=dsa[dsa$Cond=='Artificial',]))
-```
-
-## Blink summary stats
-```{r}
-(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
-      bdur=mean(tot_blank_time), bdur_sd=sd(tot_blank_time),
-      bdur_min=min(tot_blank_time), bdur_max=max(tot_blank_time), 
-      bdur_sub300=sum(tot_blank_time<300), bdur_supra300=sum(tot_blank_time>300),
-      total=length(tot_blank_time)))
-(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
-      blat=mean(blink_latency), blat_sd=sd(blink_latency),
-      blat_min=min(blink_latency), blat_max=max(blink_latency), 
-      blat_sub300=sum(blink_latency<300), blat_supra300=sum(blink_latency>300),
-      total=length(blink_latency)))
+# summary(lm(rt.x~blink_target_asynchrony*cue_valid*cue_pred, data=dsa))
+summary(lmer(rt.x~blink_target_asynchrony*cue_valid*cue_pred + (1|subj), data=dsa))
+# summary(lmer(rt.x~blink_target_asynchrony*cue_valid_c*cue_pred_c + (1|subj), data=dsa))
 ```
