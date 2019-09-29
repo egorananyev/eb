@@ -34,8 +34,9 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
+debug = False
 drift_check = False
 # experiment variables:
 cue_delay_min = 300  # the time frame before the location/blink cue
@@ -70,10 +71,10 @@ targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
 exp_info = {u'subj': u'', u'cond': u'', u'sess': u''}
-exp_info['expt'] = '2'
-# conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'd'=debug, 'm'=measurement
+# conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
+exp_info['expt'] = '2'
 if not dlg.OK:
     core.quit()  # user pressed cancel
 exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
@@ -89,7 +90,6 @@ elif exp_name == 'eb2':
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
 
 # Assigning conditions:
-debug = False
 eye_tracking = True  # true by default
 training = False
 voluntary = False
@@ -99,10 +99,6 @@ print('Condition: ' + exp_info['cond'])
 if exp_info['cond'] == 'm':
     measure = True
 else:
-    if exp_info['cond'] == 'd':
-        debug = True
-        trial_n = 1
-        eye_tracking = False
     if exp_info['cond'] == 't':
         trial_n = 1
         training = True
@@ -111,8 +107,9 @@ else:
     if exp_info['cond'] == 'a':
         import serial
         shutters = True
-        ser = serial.Serial('/dev/ttyACM0', 9600)
-        ser.write('c')  # both sides clear
+        if not dummy_mode:
+            ser = serial.Serial('/dev/ttyACM0', 9600)
+            ser.write('c')  # both sides clear
         shutters_shut = False
 
 # Handling condition instructions:
@@ -313,7 +310,7 @@ def monitor_cue_resp(flip_time_, cue_rt_start_):
 def close_shutters(dummy_mode_):
     if not dummy_mode_:
         tracker.sendMessage('SHUTTER_START %.2f' % flip_time)
-    ser.write('z')
+        ser.write('z')
     print('Closed the goggles.')
     shutters_shut_ = True
     return shutters_shut_
@@ -322,15 +319,16 @@ def close_shutters(dummy_mode_):
 def open_shutters(dummy_mode_):
     if not dummy_mode_:
         tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
-    ser.write('c')
+        ser.write('c')
     print('Opened the goggles.')
     shutters_shut_ = False
     return shutters_shut_
 
 # Also no variation across frames, but only available upon call, which is made only in key registering phase.
-def exit_routine():
+def exit_routine(debug_mode_):
     if shutters:
-        ser.write('z')
+        if not debug_mode_:
+            ser.write('z')
         print('Closed the goggles.')
 
     # Behavioural data output:
@@ -503,8 +501,12 @@ for trial in trials:
                     shutters_shut = close_shutters(dummy_mode)
                     shutter_closing_time = flip_time
             if shutters_shut:
-                if (flip_time - shutter_closing_time) >= blink_time_window:
+                if (flip_time - shutter_closing_time) >= shutter_dur:
                     shutters_shut = open_shutters(dummy_mode)
+                    if debug:
+                        print(flip_time)
+                        print(shutter_closing_time)
+                        print(shutter_dur)
 
     # Blink latency = the fixation period after the cue:
     if not dummy_mode:
@@ -522,8 +524,12 @@ for trial in trials:
                     shutters_shut = close_shutters(dummy_mode)
                     shutter_closing_time = flip_time
             if shutters_shut:
-                if (flip_time - shutter_closing_time) >= blink_time_window:
+                if (flip_time - shutter_closing_time) >= shutter_dur:
                     shutters_shut = open_shutters(dummy_mode)
+                    if debug:
+                        print(flip_time)
+                        print(shutter_closing_time)
+                        print(shutter_dur)
 
     # Real or simulated blink follow the same timeline:
     blink_time_period_frames = int(blink_time_window * frame_rate)
@@ -541,16 +547,26 @@ for trial in trials:
                     shutters_shut = close_shutters(dummy_mode)
                     shutter_closing_time = flip_time
             if shutters_shut:
-                if (flip_time - shutter_closing_time) >= blink_time_window:
+                if (flip_time - shutter_closing_time) >= shutter_dur:
                     shutters_shut = open_shutters(dummy_mode)
+                    if debug:
+                        print(flip_time)
+                        print(shutter_closing_time)
+                        print(shutter_dur)
 
     ## If the goggles are still somehow shut, opening them forcefully:
     if shutters:
         print('cue_rt ' + str(cue_rt))
+        if debug:
+            print(shutters_shut)
         if shutters_shut:
             shutters_shut = open_shutters(dummy_mode)
             print('Opened the goggles "forcefully".')
-            
+            if debug:
+                print(flip_time)
+                print(shutter_closing_time)
+                print(shutter_dur)
+
     ## Behavioural response: measuring the reaction time:
     event.clearEvents()
     if not dummy_mode:
@@ -673,4 +689,4 @@ for trial in trials:
         tracker.stopRecording()
 
 # Finishing the experiment
-exit_routine()
+exit_routine(dummy_mode)
