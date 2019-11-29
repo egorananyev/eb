@@ -95,6 +95,7 @@ training = False
 voluntary = False
 shutters = False
 measure = False
+noblink = False
 print('Condition: ' + exp_info['cond'])
 if exp_info['cond'] == 'm':
     measure = True
@@ -111,15 +112,14 @@ else:
             ser = serial.Serial('/dev/ttyACM0', 9600)
             ser.write('c')  # both sides clear
         shutters_shut = False
+    if exp_info['cond'] == 'c':
+        noblink = True
+        shutters_shut = False
 
 # Handling condition instructions:
 if measure:
     cond_instr = 'Please blink immediately after you see the black square.'
-elif exp_info['cond'] == 'c':
-    cond_instr = 'Please do the following:\n' \
-                 '(1) DO NOT BLINK during the trial - blink after the trial instead;\n' \
-                 '(2) Indicate the location of the target (WHITE DOT) as soon as you see it by pressing LEFT or RIGHT.'
-elif exp_info['cond'] == 'a':
+elif exp_info['cond'] == 'c' or exp_info['cond'] == 'a':
     cond_instr = 'Please do the following:\n' \
                  '(1) Press ''SPACE'' immediately after you see a black square;\n' \
                  '(2) DO NOT BLINK during the trial - blink *after* the trial instead;\n' \
@@ -184,6 +184,7 @@ output_mat = {}
 
 ## Shutters condition also estimates blink duration to simulate physiological blinks
 if shutters:
+    # taking only the last measurement:
     all_sess_dirs = os.listdir(subj_dir + os.sep + 'cond-m')
     last_sess_dir = all_sess_dirs[len(all_sess_dirs) - 1]
     blink_params = pd.read_csv(subj_dir + os.sep + 'cond-m' + os.sep + last_sess_dir + os.sep + 'blink_params.csv')
@@ -491,10 +492,10 @@ for trial in trials:
     for cue_frame in range(cue_frames):
         flip_time = frame_routine()
         cue_box.draw()
-        if shutters:
+        if noblink or shutters:
             if not cue_rt:
                 cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0:
+                if cue_rt > 0 and shutters:
                     tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
                     tracker.sendMessage('CUE_RT %.2f' % cue_rt)
                     print('sent cue RT to the eye tracker')
@@ -514,10 +515,10 @@ for trial in trials:
     blink_latency_frames = int(blink_latency * frame_rate)
     for blink_latency_frame in range(blink_latency_frames):
         flip_time = frame_routine()
-        if shutters:
+        if noblink or shutters:
             if not cue_rt:
                 cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0:
+                if cue_rt > 0 and shutters:
                     tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
                     tracker.sendMessage('CUE_RT %.2f' % cue_rt)
                     print('sent cue RT to the eye tracker')
@@ -537,10 +538,10 @@ for trial in trials:
         tracker.sendMessage('BLINK_WINDOW_ONSET %.2f' % flip_time)
     for blink_time_period_frame in range(blink_time_period_frames):
         flip_time = frame_routine()
-        if shutters:
+        if noblink or shutters:
             if not cue_rt:
                 cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0:
+                if cue_rt > 0 and shutters:
                     tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
                     tracker.sendMessage('CUE_RT %.2f' % cue_rt)
                     print('sent cue RT to the eye tracker')

@@ -1,0 +1,93 @@
+---
+title: "[eb2] Analyses"
+author: "Egor Ananyev"
+date: "2019-01-04"
+output:
+    html_document:
+        toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+# Data input and parsing
+```{r set-options, message=F}
+# options(width=100)
+options(width=90)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(reshape2)
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
+if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+library(R.utils)
+sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+ds = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/ds2.csv', sep='/'))
+dsa = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/dsa2.csv', sep='/'))
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('NoBlink','Artificial','Prompted')) # this works for lm
+```
+
+# Continuous CTOA
+```{r, fig.width=8.5, fig.height=5.5}
+# cur_subj = 8 #TEMP
+for(cur_subj in unique(ds$subj)){
+  p = ggplot(data=ds[ds$subj==cur_subj,], aes(x=ctoa, y=RT, color=CueValid)) + 
+      geom_smooth(method='loess', alpha=0.15, aes(fill=CueValid), span=0.15) +
+      geom_point(alpha=0.5) +
+      xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~.) +
+      ggtitle(paste('Participant', as.character(cur_subj), 'RT')) + guides(alpha=F) +
+      theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+  p = plot_themefy(p)
+  plot(p)
+}
+# pdf('eb2_indiv.pdf', width=8.5, height=5.5)
+# plot(p)
+# dev.off()
+```
+
+# Discontinuous CTOA
+```{r, fig.width=4.5, fig.height=2.5}
+# sumss_valid = ddply(ds[ds$CueValid=='Valid',], .(subj, ctoa_lowbound, Cond), summarise, 
+#                     RT_valid=median(RT), N_valid=length(RT))
+# sumss_invalid = ddply(ds[ds$CueValid=='Invalid',], .(subj, ctoa_lowbound, Cond), summarise, 
+#                       RT_invalid=median(RT), N_invalid=length(RT))
+# sumss_adv = merge(sumss_valid, sumss_invalid, by=c('subj', 'ctoa_lowbound', 'Cond'))
+# sumss_adv$rt_adv = sumss_adv$RT_invalid - sumss_adv$RT_valid
+# for(cur_subj in unique(ds$subj)){
+#   adv_subj = sumss_adv[sumss_adv$subj==cur_subj,]
+#   p = ggplot(data=adv_subj, aes(x=ctoa_lowbound, y=rt_adv, color=Cond, alpha=0.5)) + 
+#       geom_line() + xlab('Cue-to-Target Asynchrony (ms)') + 
+#       ylab('RT Invalid - Valid (ms)') + 
+#       theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5)) + 
+#       ggtitle(paste('Participant', as.character(cur_subj))) + guides(alpha=F)
+#   p = plot_themefy(p)
+#   plot(p)
+#   all_furs = data.frame()
+#   for(cur_cond in unique(sumss_adv$Cond[sumss_adv$subj==cur_subj])){
+#     this_fur = fur(adv_subj, cur_cond)
+#     this_fur$Cond = cur_cond
+#     all_furs = rbind(this_fur, all_furs)
+#   }
+#   p = ggplot(all_furs, aes(x=freq,y=A, color=Cond)) + geom_line() + xlim(.75,5.25) +
+#     xlab('Frequency') + ylab('Amplitude') + guides(color=guide_legend(title='Blink Condition')) +
+#     ggtitle(paste('Participant', as.character(cur_subj)))
+#   p = plot_themefy(p)
+#   suppressWarnings(plot(p))
+#   # Printing number of trials in each condition:
+#   print(dcast(melt(adv_subj[,c('ctoa_lowbound', 'Cond', 'N_valid', 'N_invalid')], 
+#                    id.vars=c('ctoa_lowbound', 'Cond')), Cond + variable ~ ctoa_lowbound))
+# }
+```

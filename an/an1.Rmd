@@ -1,0 +1,431 @@
+---
+title: "[eb1] Analyses"
+author: "Egor Ananyev"
+date: "2019-01-04"
+output:
+  html_notebook: 
+    html_document:
+      number_sections: yes
+      toc: yes
+      toc_depth: 4
+      toc_float: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+
+# Data and function input
+```{r set-options, message=F}
+out=F
+options(width=100)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
+if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+library(R.utils)
+sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+source(paste(dropbox_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
+## Data input
+ds = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/ds1.csv', sep='/'))
+dsa = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/dsa1.csv', sep='/'))
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
+ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
+```
+
+
+# Cueing ~ Condition * Cue predictiveness
+
+
+## Density plots
+```{r, fig.width=6, fig.height=2.5}
+plot_dens = function(cue_pred_val, plot_title){
+  ggplot(data=ds[ds$cue_pred==cue_pred_val,], aes(x=RT, colour=CueValid)) + 
+    geom_density() + facet_grid(.~CondFull) + theme(legend.position = 'bottom') + 
+    ggtitle(plot_title) + guides(colour=guide_legend(title='Cue Validity'))
+}
+plot(plot_dens(0, 'Unpredictive Cue'))
+plot(plot_dens(1, 'Predictive Cue'))
+```
+
+
+## Cueing advantage (invalid - valid cue) box plots
+```{r, fig.width=4.5, fig.height=2.5}
+ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
+sumss_valid = ddply(ds[ds$CueValid=='Valid',], .(subj, CuePredFull, Cond), summarise, 
+                    RT_valid=median(RT))
+sumss_invalid = ddply(ds[ds$CueValid=='Invalid',], .(subj, CuePredFull, Cond), summarise, 
+                      RT_invalid=median(RT))
+sumss_adv = merge(sumss_valid, sumss_invalid, by=c('subj', 'CuePredFull', 'Cond'))
+sumss_adv$rt_adv = sumss_adv$RT_invalid - sumss_adv$RT_valid
+p = ggplot(data=sumss_adv, aes(x=Cond, y=rt_adv, fill=Cond, alpha=0.5)) + 
+    geom_boxplot() + facet_grid(.~CuePredFull) + xlab('Eye Blink Condition') + 
+    ylab('RT Invalid - Valid (ms)') + guides(alpha=F, fill=F) + ylim(-75, 75) +
+    geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3) + 
+    theme(legend.position='none', panel.grid.minor=element_blank(), 
+          plot.title = element_text(hjust = 0.5)) + ggtitle('Cueing Advantage')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt-adv_box', w=4.5, s=T)}  # default: w=3.5, h=2.5, s(uppress)=F, j(peg)=T
+suppressWarnings(plot(p))
+```
+
+
+## Linear analyses
+
+```{r}
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+```
+1. The analysis shows a clear validity effect, with a valid cue taking longer to respond to (#3), i.e., IOR.
+2. If the cue is predictive, the responses are longer (#4).
+3. However, if the cue is both predictive and valid, there is a facilitation instead of IOR (#9)...
+4. ...but not in the No Blink condition (#10).
+
+In other words, the facilitation only occurs in the blink (artificial *and* real) conditions.
+
+Double-checking with factored cue validity and predictiveness, the estimates are the same:
+
+```{r}
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+# ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+# lmerfn(lmer(RT~Cond*factor(cue_valid)*factor(cue_pred) + (1|subj), data=ds))
+```
+
+
+## Bayes Factor
+```{r}
+library(BayesFactor)
+bf_ss = ds
+bf_ss$subj <- factor(bf_ss$subj)
+bf_ss$AB = 0
+bf_ss$AB[bf_ss$cond=='a'] = 1
+bf_ss$PB = 0
+bf_ss$PB[bf_ss$cond=='v'] = 1
+bf_ss$NB = 0
+bf_ss$NB[bf_ss$cond=='c'] = 1
+```
+
+```{r}
+### Prompted vs no blink
+mRes = 1/generalTestBF(RT ~ PB * cue_valid + subj,
+                       data=bf_ss[bf_ss$AB==0 & bf_ss$cue_pred==1,], whichRandom='subj', 
+                      neverExclude='subj', whichModels='top')
+print(mRes)
+```
+The above analysis shows the importance of PB x validity interaction and PB condition itself in explaining the RT. The cue validity itself is not important (no simple effect).
+
+This confirms that Prompted Blink is significantly different from No Blink condition.
+
+```{r}
+## Prompted vs artificial blink
+mRes = 1/generalTestBF(RT ~ PB * cue_valid + subj,
+                       data=bf_ss[bf_ss$NB==0 & bf_ss$cue_pred==1,], whichRandom='subj', 
+                       neverExclude='subj', whichModels='top')
+print(mRes)
+```
+When comparing Prompted and Artificial Blink conditions, they are statistically interchangeable (BF < 0.33).
+
+```{r}
+## No blink vs artificial blink
+mRes = 1/generalTestBF(RT ~ AB * cue_valid + subj,
+                       data=bf_ss[bf_ss$PB==0 & bf_ss$cue_pred==1,], whichRandom='subj', 
+                       neverExclude='subj', whichModels='top')
+print(mRes)
+```
+And so are the no-blink and AB conditions.
+
+
+# Taking CTOA into consideration
+
+```{r, fig.width=5.5, fig.height=3.5}
+## Heavy smoothing (gam)
+p = ggplot(data=ds, aes(x=ctoa, y=RT, color=CueValid)) + 
+    geom_smooth(method='lm', alpha=0.15, aes(fill=CueValid)) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~CuePred) + guides(alpha=F) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~ctoa_lm', w=7.5, h=3.5)}
+plot(p)
+## Heavy smoothing (gam)
+p = ggplot(data=ds, aes(x=ctoa, y=RT, color=CueValid)) + 
+    geom_smooth(method='gam', alpha=0.15, aes(fill=CueValid), formula=y~s(x, bs="cs")) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~CuePred) + guides(alpha=F) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~ctoa_gam', w=7.5, h=3.5)}
+plot(p)
+## Light smoothing (loess with a small span)
+p = ggplot(data=ds, aes(x=ctoa, y=RT, color=CueValid)) + 
+    geom_smooth(method='loess', alpha=0.15, aes(fill=CueValid), span=0.15) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~CuePred) + guides(alpha=F) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~ctoa_loess', w=7.5, h=3.5)}
+plot(p)
+```
+
+```{r}
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+lmerfn(lmer(RT~Cond*cue_valid*cue_pred*ctoa0_s + (1|subj), data=ds))
+```
+1. When a target appears later (increase in CTOA), thre is a significant reduction in RT (#5).
+2. There is also the IOR (#3).
+But no other effect is significant.
+
+
+# Creating blink parameter variables
+
+```{r}
+cue_valid_name = 'Cue Validity'
+dsa$blink_targ_async = 1000 * (dsa$targ_time - dsa$trial_start - dsa$blank_time_end)
+dsa$blink_targ_async_c = dsa$blink_targ_async - mean(dsa$blink_targ_async)
+dsa$tot_blank_time = 1000 * (dsa$tot_blank_time)
+dsa$tot_blank_time_c = dsa$tot_blank_time - mean(dsa$tot_blank_time)
+head(dsa[,c('blank_time_beg', 'cue_time', 'trial_time_beg')])
+dsa$blink_latency = dsa$blank_time_beg - 1000 * (dsa$cue_time - dsa$trial_time_beg)
+# Centering blink duration properly
+dsa$blink_dur = dsa$tot_blank_time
+blink_dur_sumss = ddply(dsa, .(Cond, subj), summarize,
+                        blink_dur_ave = mean(blink_dur),
+                        blink_dur_sd = sd(blink_dur))
+dsa = merge(dsa, blink_dur_sumss, by=c('subj', 'Cond'))
+dsa$blink_dur_z = with(dsa, (blink_dur - blink_dur_ave) / blink_dur_sd)
+```
+
+```{r}
+(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
+      bdur=mean(tot_blank_time), bdur_sd=sd(tot_blank_time),
+      bdur_min=min(tot_blank_time), bdur_max=max(tot_blank_time), 
+      bdur_sub300=sum(tot_blank_time<300), bdur_supra300=sum(tot_blank_time>300),
+      total=length(tot_blank_time)))
+(ddply(dsa[dsa$Cond=='Prompted',], .(subj), summarise,
+      blat=mean(blink_latency), blat_sd=sd(blink_latency),
+      blat_min=min(blink_latency), blat_max=max(blink_latency), 
+      blat_sub300=sum(blink_latency<300), blat_supra300=sum(blink_latency>300),
+      total=length(blink_latency)))
+```
+
+# Raw blink duration
+
+Rescaling the blink duration such that 1 unit = 100 ms increment (makes the coefficients more meaningful):
+
+```{r}
+dsa$blink_dur100 = dsa$blink_dur * 10
+dsa$blink_dur_ms = dsa$blink_dur * 1000
+```
+
+```{r, fig.width=4.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~CuePred) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur_lin', w=4.5, h=2.5, s=T)}
+print(p)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+```
+Longer blinks are associated with cueing benefit in voluntary attention condition (#15). Blinks that are longer by a 100 ms cause a 27 ms speed-up in RTs to validly cued targets in predictive cueing condition...
+
+Although from the linear plots it looks like there's a lot more going on. But then, this effect is not meant to be conclusive.
+
+Splitting the analyses into predictive and unpredictive portions shows blink duration effect in predictive cueing condition, but no interaction with validity, and no blink duration effect for unpredictive cues. Although those tests are underpowered and shouldn't be used to conclude anything.
+
+```{r}
+### Predictive Cues
+# lmerfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa[dsa$cue_pred==1,]))
+### Unpredictive Cues
+# lmerfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa[dsa$cue_pred==0,]))
+```
+
+
+# Normalized blink duration
+
+
+## Continuous blink duration
+
+```{r, fig.width=4.5, fig.height=3.5}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + 
+    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred)
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur-z_lin', w=4.5, h=3.5, s=T)}
+suppressWarnings(plot(p))
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+```
+
+```{r, fig.width=5.0, fig.height=3.5}
+cor_blink_dur_z = ddply(dsa, .(subj, CueValid, Cond, CuePred), summarise,
+                        corcoeff = cor(RT, blink_dur))
+p = ggplot(cor_blink_dur_z, aes(x=CueValid, y=corcoeff, color=CueValid)) +
+    geom_boxplot() + facet_grid(Cond~CuePred) + xlab('Cue Validity') + 
+    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05, alpha=0.5, 
+                 aes(fill=CueValid)) + 
+    ylab('RT x Norm. Blink Duration Correlation')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur-z_cor', w=5.0, h=3.5, s=T)}
+print(p)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur_z*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+```
+...I threw several attempts at trying to interpret this table, to no avail. I think it's best to simplify this analysis with the mean split.
+
+Effects #2, 3, and 7 are consistent with other analyses. With regards to the inter-trial variation in blink durations:
+
+1. Trials with longer blinks are generally associated with a slowed response to the target following an invalid cue (#1),
+2. When the cues were uninformative,
+   a. trials with longer artificial blinks did not show the IOR (#5);
+   b. this was not the case for real blinks (#12).
+3. With the informative cues:
+   a. Trials with longer real blinks show an increased reaction time to invalidly cued targets (#13),
+   b. but faster reaction to the validly cued targets (#15).
+
+With informative cues, trials with longer blinks were associated with attentional facilitation , especially with real blinks.
+
+## Mean duration split
+
+```{r}
+dsa$blink_dur_split = 'Short Blink'
+dsa$blink_dur_split[dsa$blink_dur_z > 0] = 'Long Blink'
+dsa$blink_dur_split = factor(dsa$blink_dur_split, c('Short Blink', 'Long Blink'))
+```
+
+```{r, fig.width=5.5, fig.height=3.5}
+sumss = ddply(dsa, .(subj, CuePred, Cond, CueValid, blink_dur_split), summarise, RT=mean(RT))
+p = ggplot(sumss, aes(x=Cond, y=RT, color=CueValid)) + geom_boxplot() +
+    facet_grid(CuePred~blink_dur_split) + guides(color=guide_legend(title='Cue Validity')) +
+    # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3) + 
+    xlab('Blink Condition') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur-z-split_box', w=5.5, h=3.5)}
+print(p)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur_split*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+```
+Model baseline: AB, Unpredictive & Invalid Cue, Short Blink
+
+Given the baseline, we observe the IOR for Unpredictive Cues (#2) and facilitation for Predictive Cues (#7).
+
+* Longer blinks are associated with ~11 ms slowdown in response.
+* Longer blinks are associated with a reduced IOR in the Unpredictive Cue condition.
+
+The latter is not at all apparent looking at the plots: There should be less of a difference in RTs between valid and invalid cues in lower right corner when compared to the lower left corner.
+
+Regardless, none of the effects seem to have anything to do with the blink condition.
+
+
+# Individual differences in blink duration
+
+```{r, fig.width=6.5, fig.height=3.5}
+bdur_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, CuePred), summarise,
+                RT=mean(RT), bdur=mean(blink_dur), bdur_min=min(blink_dur),
+                bdur_max=max(blink_dur), bdur_sd=sd(blink_dur), 
+                bdur_supra300=length(blink_dur>300))
+p = ggplot(bdur_rt_cond_ctoa, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~CuePred) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur-indiv_lin', w=5.5)}
+plot(p)
+```
+
+```{r, fig.width=5.5, fig.height=4}
+p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + #geom_point(aes(color=factor(subj))) + 
+  geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
+                                            alpha=.01), se=F) +
+  geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(CueValid))) +
+  facet_grid(cols=vars(CuePredFull), rows=vars(Cond)) + ylim(250,450) +
+  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+  guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
+if(out){outpdf('eb1_rt~bdur-indiv_slopes', w=5.5, h=4, s=T)}
+suppressWarnings(plot(p))
+```
+
+```{r, fig.width=4.5, fig.height=3.5}
+bdur_rt_corr = ddply(dsa, .(Cond, subj, CuePredFull, CueValid), summarise,
+                corr = cor(tot_blank_time, RT))
+p = ggplot(data=bdur_rt_corr, aes(x=CueValid, y=corr, fill=CueValid, alpha=0.5)) + 
+    geom_boxplot() + facet_grid(Cond~CuePredFull) + xlab('Cue Validity') + 
+    ylab('Pearson\'s Correlation') + guides(alpha=F, fill=F) +
+    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05) + 
+    theme(legend.position='none', panel.grid.minor=element_blank(), 
+          plot.title = element_text(hjust = 0.5)) + ggtitle('RT x Blink Duration Correlation')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bdur-indiv_cor', w=4.5, h=3.5)}
+plot(p)
+```
+
+```{r}
+dsa$blink_dur_ave_c = with(dsa, blink_dur_ave - mean(blink_dur_ave))  # centering the continuous variable
+lmerfn(lmer(RT~blink_dur_ave_c*cue_valid*cue_pred*Cond + (1|subj), data=dsa))
+```
+There's the IOR (#2) and its reversal in predictive cue condition (#7), as well as the general slow-down in the predictive cue condition (#3). Consistent with the previous analyses, there is no difference between artificial and real blinks.
+
+Additionally, people with longer average blinks have their RT slowed in the predictive cue condition (#6).
+
+
+# Blink latency
+
+```{r, fig.width=7.5, fig.height=2.5}
+blat_rt = ddply(dsa, .(subj, CuePredFull, CueValid, Cond), summarise,
+                blat = mean(blank_time_beg), RT = mean(RT))
+p = ggplot(blat_rt, aes(x=blat, y=RT)) + geom_point(aes(color=CueValid)) + 
+  stat_smooth(method='lm', aes(color=CueValid), alpha=.2) +
+  facet_grid(Cond~CuePredFull) + xlab('Blink Latency (ms)') + ylab('Reaction Time (ms)') +
+  guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
+  theme(legend.position=c(1.1, .75), legend.title=element_blank(), 
+        legend.box.background = element_rect(colour = "black"),
+        legend.spacing.y = unit(0, "mm"))
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~blat-indiv', w=7.5, h=4.5, s=T)}
+plot(p)
+```
+
+
+# Blink-target asynchrony
+
+```{r, fig.width=7.5, fig.height=2.5}
+bota_rt = ddply(dsa, .(subj, CuePredFull, CueValid, Cond), summarise,
+                bota = mean(blink_targ_async), RT = mean(RT))
+p = ggplot(bota_rt, aes(x=bota, y=RT)) + geom_point(aes(color=CueValid)) + 
+  stat_smooth(method='lm', aes(color=CueValid), alpha=.2) +
+  facet_grid(Cond~CuePredFull) + xlab('Blink Offset to Target Asynchrony (ms)') + 
+  ylab('Reaction Time (ms)') + guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() +
+  theme(legend.position='none')
+p = plot_themefy(p)
+if(out){outpdf('eb1_rt~bota-indiv', w=7.5, h=4.5)}
+plot(p)
+```
+
