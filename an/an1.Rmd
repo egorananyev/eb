@@ -234,8 +234,6 @@ dsa$blink_dur_z = with(dsa, (blink_dur - blink_dur_ave) / blink_dur_sd)
 Rescaling the blink duration such that 1 unit = 100 ms increment (makes the coefficients more meaningful):
 
 ```{r}
-dsa$blink_dur100 = dsa$blink_dur * 10
-dsa$blink_dur_ms = dsa$blink_dur * 1000
 ```
 
 ```{r, fig.width=4.5, fig.height=2.5}
@@ -249,7 +247,11 @@ print(p)
 ```
 
 ```{r}
-lmerfn(lmer(RT~blink_dur*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+dsa_temp = dsa
+dsa_temp$blink_dur100 = dsa_temp$blink_dur * 10
+dsa_temp$blink_dur_ms = dsa_temp$blink_dur * 1000
+dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
+lmerfn(lmer(RT ~ blink_dur_c * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
 ```
 Longer blinks are associated with cueing benefit in voluntary attention condition (#15). Blinks that are longer by a 100 ms cause a 27 ms speed-up in RTs to validly cued targets in predictive cueing condition...
 
@@ -512,7 +514,14 @@ lmerfn(lmer(RT ~ blink_dur_c * Cond * cue_valid * cue_pred + sess_order_0 + cond
 ```
 The interaction between blink duration and prompted condition is no longer significant, but everything else holds up.
 
-Looking into the effects of nuisance parameters on blink duration:
+The 'basic effects': cue validity (#3) and predictiveness (#4) as well as their interaction (#13).
+
+The effects associated with teh blink duration per se:
+* Longer blink durations generally result in slower responses (#1).
+* There is an interaction with the cue validity: the IOR is reduced with longer blinks (#9).
+* But with real blinks, the 
+
+Just out of curiousity, looking into the effects of nuisance parameters on blink duration:
 ```{r}
 lmerfn(lmer(blink_dur ~ Cond * sess_order_0 * cond_order_c * block_order_c + (1|subj), data=dsa_order))
 ```
