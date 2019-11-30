@@ -35,7 +35,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
@@ -68,6 +68,7 @@ plot(plot_dens(1, 'Predictive Cue'))
 
 
 ## Cueing advantage (invalid - valid cue) box plots
+
 ```{r, fig.width=4.5, fig.height=2.5}
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 sumss_valid = ddply(ds[ds$CueValid=='Valid',], .(subj, CuePredFull, Cond), summarise, 
@@ -224,6 +225,9 @@ dsa$blink_dur_z = with(dsa, (blink_dur - blink_dur_ave) / blink_dur_sd)
       blat_sub300=sum(blink_latency<300), blat_supra300=sum(blink_latency>300),
       total=length(blink_latency)))
 ```
+
+
+
 
 # Raw blink duration
 
@@ -429,3 +433,87 @@ if(out){outpdf('eb1_rt~bota-indiv', w=7.5, h=4.5)}
 plot(p)
 ```
 
+# Session, condition, and block order
+
+```{r}
+## "session order" variable:
+sumss_block = ddply(ds, .(subj, block_date), summarise, sess_order = 0)
+sumss_block = sumss_block %>% group_by(subj) %>% mutate(sess_order=order(block_date))
+head(sumss_block)
+dsa_order = merge(dsa, sumss_block, by=c('subj', 'block_date'))
+ds_order = merge(ds, sumss_block, by=c('subj', 'block_date'))
+## "condition order" variable
+sumss_cond = ddply(ds[ds$block_order==1,], .(subj, block_date, Cond, block_time), summarise,
+                   cond_order = 0)
+sumss_cond = sumss_cond %>% group_by(subj, block_date) %>% mutate(cond_order=order(order(block_time)))
+# ... I've no idea why I need to double-wrap order(), but I have to to make it work right.
+head(sumss_cond, 12)
+# since we're not merging by block time, dropping it first:
+sumss_cond = subset(sumss_cond, select=-c(block_time))
+dsa_order = merge(dsa_order, sumss_cond, by=c('subj', 'block_date', 'Cond'))
+ds_order = merge(ds_order, sumss_cond, by=c('subj', 'block_date', 'Cond'))
+## "block order" variable
+ds_order$BlockOrder = '5th Block'
+ds_order$BlockOrder[ds_order$block_order==1] = '1st Block'
+ds_order$BlockOrder[ds_order$block_order==2] = '2nd Block'
+ds_order$BlockOrder[ds_order$block_order==3] = '3rd Block'
+ds_order$BlockOrder[ds_order$block_order==4] = '4th Block'
+dsa_order$BlockOrder = '5th Block'
+dsa_order$BlockOrder[dsa_order$block_order==1] = '1st Block'
+dsa_order$BlockOrder[dsa_order$block_order==2] = '2nd Block'
+dsa_order$BlockOrder[dsa_order$block_order==3] = '3rd Block'
+dsa_order$BlockOrder[dsa_order$block_order==4] = '4th Block'
+head(ds_order[,c('block_date', 'block_time', 'block_order', 'sess_order', 'cond_order')])
+```
+
+
+## Nuisance models
+
+
+### Without blink parameters
+
+Comparing against the nuisance-free model:
+
+```{r}
+ds_order$Cond <- factor(ds_order$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds_order))
+```
+
+Nuisance model:
+
+```{r}
+ds_order$sess_order_0 = ds_order$sess_order - 1  # zero is first session
+ds_order$cond_order_c = ds_order$cond_order - 1  # centered on second block
+ds_order$block_order_c = ds_order$block_order - 1  # centered on second condition
+lmerfn(lmer(RT ~ Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
+              (1|subj), data=ds_order))
+```
+
+
+### With blink parameters
+
+Nuisance-free model:
+
+```{r}
+dsa_temp = dsa
+dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
+lmerfn(lmer(RT ~ blink_dur_c * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
+```
+
+Nuisance model:
+
+```{r}
+dsa_order$sess_order_0 = dsa_order$sess_order - 1  # zero is first session
+dsa_order$cond_order_c = dsa_order$cond_order - 1  # centered on second block
+dsa_order$block_order_c = dsa_order$block_order - 1  # centered on second condition
+dsa_order$blink_dur_c = dsa_order$blink_dur - dsa_order$blink_dur_ave
+lmerfn(lmer(RT ~ blink_dur_c * Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
+              (1|subj), data=dsa_order))
+```
+The interaction between blink duration and prompted condition is no longer significant, but everything else holds up.
+
+Looking into the effects of nuisance parameters on blink duration:
+```{r}
+lmerfn(lmer(blink_dur ~ Cond * sess_order_0 * cond_order_c * block_order_c + (1|subj), data=dsa_order))
+```
+Too many interactions.

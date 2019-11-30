@@ -45,6 +45,7 @@ for(cur_cue_cond in cue_conds){
     cur_subj_dir = paste0(data_dir, cur_subj)
     # cur_cond = conds[1]  # temp
     for(cur_cond in conds){
+      block_order = 0
       cur_cond_dir = paste(cur_subj_dir, cur_cond, sep='/')
       sesss = dir(cur_cond_dir, pattern='sess-')
       # cur_sess = sesss[1]  # temp
@@ -78,6 +79,11 @@ for(cur_cue_cond in cue_conds){
                                     cue_resp_sample = NA, cue_resp_time = NA))
         }
         # print(colnames(cur_df))  # debug
+        ## Adding the time stamp to the data
+        cur_df$block_date = substr(cur_sess, 8, 17)
+        cur_df$block_time = as.numeric(substr(cur_sess, 19, 22))
+        block_order = block_order + 1
+        cur_df$block_order = block_order
         # df = cur_df  # temp
         df = rbind(df, cur_df)
         et = rbind(et, cur_et)

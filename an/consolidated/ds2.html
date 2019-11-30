@@ -425,6 +425,7 @@ for(cur_cue_cond in cue_conds){
     cur_subj_dir = paste0(data_dir, cur_subj)
     # cur_cond = conds[1]  # temp
     for(cur_cond in conds){
+      block_order = 0
       cur_cond_dir = paste(cur_subj_dir, cur_cond, sep=&#39;/&#39;)
       sesss = dir(cur_cond_dir, pattern=&#39;sess-&#39;)
       # cur_sess = sesss[1]  # temp
@@ -458,6 +459,11 @@ for(cur_cue_cond in cue_conds){
                                     cue_resp_sample = NA, cue_resp_time = NA))
         }
         # print(colnames(cur_df))  # debug
+        ## Adding the time stamp to the data
+        cur_df$block_day = substr(cur_sess, 8, 17)
+        cur_df$block_time = as.numeric(substr(cur_sess, 19, 22))
+        block_order = block_order + 1
+        cur_df$block_order = block_order
         # df = cur_df  # temp
         df = rbind(df, cur_df)
         et = rbind(et, cur_et)
@@ -485,13 +491,13 @@ head(df)</code></pre>
 ## 4      eb2        1    1    a    1     4     0.479          0         1      0.1         0.374
 ## 5      eb2        1    1    a    1     5     0.415          0         1      1.0         0.291
 ## 6      eb2        1    1    a    1     6     0.460          1         1      0.3         0.311
-##   shutter_dur trial_start trial_end    cue_rt corr_resp        rt
-## 1   0.1690251    176.0129  178.7430 0.0000000         1 0.7000480
-## 2   0.1400372    179.5829  182.7930 0.5800090         1 0.3501170
-## 3   0.1589199    183.6330  186.7730 0.3299680         1 0.5501111
-## 4   0.1720605    187.6130  190.0831 0.3699839         1 0.6101592
-## 5   0.1441236    190.9231  193.7331 0.3700340         1 0.3801770
-## 6   0.1780864    194.5731  197.0931 0.3899920         1 0.6401522</code></pre>
+##   shutter_dur trial_start trial_end    cue_rt corr_resp        rt  block_day block_time block_order
+## 1   0.1690251    176.0129  178.7430 0.0000000         1 0.7000480 2019-09-30       1048           1
+## 2   0.1400372    179.5829  182.7930 0.5800090         1 0.3501170 2019-09-30       1048           1
+## 3   0.1589199    183.6330  186.7730 0.3299680         1 0.5501111 2019-09-30       1048           1
+## 4   0.1720605    187.6130  190.0831 0.3699839         1 0.6101592 2019-09-30       1048           1
+## 5   0.1441236    190.9231  193.7331 0.3700340         1 0.3801770 2019-09-30       1048           1
+## 6   0.1780864    194.5731  197.0931 0.3899920         1 0.6401522 2019-09-30       1048           1</code></pre>
 <pre class="r"><code>ds = df
 # print(excl)</code></pre>
 </div>

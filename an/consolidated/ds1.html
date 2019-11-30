@@ -424,6 +424,8 @@ for(cur_cue_cond in cue_conds){
     cur_subj_dir = paste0(data_dir, cur_subj)
     # cur_cond = conds[1]  # temp
     for(cur_cond in conds){
+      ## Keeping track of the block number:
+      block_order = 0
       cur_cond_dir = paste(cur_subj_dir, cur_cond, sep=&#39;/&#39;)
       sesss = dir(cur_cond_dir, pattern=&#39;sess-&#39;)
       # cur_sess = sesss[1]  # temp
@@ -457,6 +459,11 @@ for(cur_cue_cond in cue_conds){
                                     cue_resp_sample = NA, cue_resp_time = NA))
         }
         # print(colnames(cur_df))  # debug
+        ## Adding the time stamp to the data
+        cur_df$block_date = substr(cur_sess, 8, 17)
+        cur_df$block_time = as.numeric(substr(cur_sess, 19, 22))
+        block_order = block_order + 1
+        cur_df$block_order = block_order
         # df = cur_df  # temp
         df = rbind(df, cur_df)
         et = rbind(et, cur_et)
@@ -484,13 +491,20 @@ head(df)</code></pre>
 ## 4      eb1    1    a    1     4     0.366          0         0         0.491   0.1743915
 ## 5      eb1    1    a    1     5     0.418          1         1         0.255   0.2130210
 ## 6      eb1    1    a    1     6     0.371          1         0         0.462   0.1796936
-##   trial_start trial_end cue_rt corr_resp        rt cue_pred targ_soa
-## 1    149.8825  153.0224     NA         1 0.8599641        1        0
-## 2    153.8623  158.2022     NA         1 0.8999710        1        0
-## 3    159.0422  163.1721     NA         1 0.8899410        1        0
-## 4    164.0121  166.2621     NA         1 0.5299599        1        0
-## 5    167.1020  168.8519     NA         1 0.4499919        1        0
-## 6    169.6919  172.5619     NA         1 0.4799860        1        0</code></pre>
+##   trial_start trial_end cue_rt corr_resp        rt cue_pred targ_soa block_date block_time
+## 1    149.8825  153.0224     NA         1 0.8599641        1        0 2019-06-24       1651
+## 2    153.8623  158.2022     NA         1 0.8999710        1        0 2019-06-24       1651
+## 3    159.0422  163.1721     NA         1 0.8899410        1        0 2019-06-24       1651
+## 4    164.0121  166.2621     NA         1 0.5299599        1        0 2019-06-24       1651
+## 5    167.1020  168.8519     NA         1 0.4499919        1        0 2019-06-24       1651
+## 6    169.6919  172.5619     NA         1 0.4799860        1        0 2019-06-24       1651
+##   block_order
+## 1           1
+## 2           1
+## 3           1
+## 4           1
+## 5           1
+## 6           1</code></pre>
 <pre class="r"><code>ds = df
 # print(excl)</code></pre>
 </div>

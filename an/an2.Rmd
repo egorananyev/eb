@@ -37,7 +37,7 @@ library(dplyr)
 library(ggplot2)
 library(lme4)
 library(reshape2)
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
