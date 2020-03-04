@@ -1,3 +1,3 @@
 # eb
 
-This project is the experiment testing the influence of eye blinks on attentional cueing.
+The influence of eye blinks on attentional cueing, coded in Python and analyzed in R.
