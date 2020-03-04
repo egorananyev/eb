@@ -274,14 +274,17 @@ Splitting the analyses into predictive and unpredictive portions shows blink dur
 
 ```{r, fig.width=4.5, fig.height=3.5}
 p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
-    stat_smooth(method='lm', alpha=0.15) + 
-    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred)
+    stat_smooth(method='lm', alpha=0.15) + xlab('Normalized Blink Duration (z)') +
+    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred) + ylab('Reaction Time (ms)') + 
+    guides(color=guide_legend(title='Cue Validity'))
 p = plot_themefy(p)
 if(out){outpdf('eb1_rt~bdur-z_lin', w=4.5, h=3.5, s=T)}
 suppressWarnings(plot(p))
 p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    xlab('Normalized Blink Duration (z)') +
     stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
-    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred)
+    xlim(-2.5, 2.5) + facet_grid(Cond~CuePred) + ylab('Reaction Time (ms)')
+    guides(color=guide_legend(title='Cue Validity'))
 p = plot_themefy(p)
 suppressWarnings(plot(p))
 ```
