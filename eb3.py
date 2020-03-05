@@ -15,7 +15,7 @@ RightOn = 'r' #goggles
 RightOff = 's' #goggles
 LensOn = 'c' #both sides clear
 LensOff = 'z' #both sides opaque
-AllOff = 'x
+AllOff = 'x'
 """
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
@@ -41,11 +41,11 @@ drift_check = False
 # experiment variables:
 cue_delay_min = 300  # the time frame before the location/blink cue
 cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
-blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
-blink_latency_max = 500
+# blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
+# blink_latency_max = 500
 # the time window for the blink - quite conservative - should include the whole blink, but is independent of
 # the blink start/end
-blink_time_window = .3
+# blink_time_window = .3
 # display dimensions:
 if toshi:
     # dr = (576, 432)
@@ -70,11 +70,11 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'', u'cond': u'', u'sess': u''}
+exp_info = {u'subj': u'', u'cond': u'', u'block': u'', u'soa': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
-exp_info['expt'] = '2'
+exp_info['expt'] = '3'
 if not dlg.OK:
     core.quit()  # user pressed cancel
 exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
@@ -88,6 +88,11 @@ if exp_name == 'eb1':
 elif exp_name == 'eb2':
     cue_pred = 1
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
+if exp_name == 'eb2':
+    cue_pred = 1
+    trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
+    soa = int(exp_info['soa'])
+    # with 11 blocks, the above session should last 40-50 min.
 
 # Assigning conditions:
 eye_tracking = True  # true by default
@@ -142,8 +147,10 @@ if not measure:
                 exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_predictive.xlsx')
             else:
                 exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_unpredictive.xlsx')
-    elif exp_name == 'eb2':
+    elif exp_name == 'eb2':  # for experiments eb2 and 3, a single conditions file is taken:
         exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')
+    elif exp_name == 'eb3':  # for eb3, SOA is determined by user input
+        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_predictive.xlsx')
 else:
     exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
 
@@ -174,7 +181,7 @@ if not os.path.exists(subj_dir):
 cond_dir = subj_dir + os.sep + 'cond-' + exp_info['cond']
 if not os.path.exists(cond_dir):
     os.makedirs(cond_dir)
-sess_dir = cond_dir + os.sep + 'sess-%s_%s' % (exp_info['sess'], exp_info['time'])
+sess_dir = cond_dir + os.sep + 'block-%s_%s' % (exp_info['block'], exp_info['time'])
 if not os.path.exists(sess_dir):
     os.makedirs(sess_dir)
 out_file_path = sess_dir + os.sep + out_file_name + '.csv'
@@ -337,9 +344,9 @@ def exit_routine(debug_mode_):
         print('the output file is empty')
     else:
         if measure:
-            data_columns = ['exp_name', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
+            data_columns = ['exp_name', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
-            data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'sess', 'trial_id', 'cue_delay', 'targ_right',
+            data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'targ_right',
                             'cue_valid', 'targ_soa', 'blink_latency', 'shutter_dur', 'trial_start', 'trial_end',
                             'cue_rt', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
@@ -394,12 +401,12 @@ for trial in trials:
     ## Randomizing variables and assigning the conditions:
     cue_delay = np.random.randint(cue_delay_min, cue_delay_max + 1) / 1000
     if measure:
-        blink_latency = blink_latency_max / 1000
+        # blink_latency = blink_latency_max / 1000
         cond_str = ''
     else:
         # Randomize the duration of the post-cue fixation & converting to sec:
-        blink_latency = np.random.randint(blink_latency_min,
-                                          blink_latency_max + 1) / 1000  # max value has to be one up
+        # blink_latency = np.random.randint(blink_latency_min,
+        #                                   blink_latency_max + 1) / 1000  # max value has to be one up
 
         # Target location:
         this_targ_loc = trial['targ_right'] * 2 - 1  # converting from binary to [-1, 1]
@@ -410,11 +417,13 @@ for trial in trials:
         targ.pos = (targ_off_x * this_targ_loc, 0)
 
         # Target SOA:
-        if exp_name == 'eb2':
-            this_targ_soa = trial['soa'] / 1000  # taking SOA from conf-file and converting to seconds (from ms)
-            print('target SOA: ' + str(this_targ_soa) + ' s')
-        elif exp_name == 'eb1':
+        if exp_name == 'eb1':
             this_targ_soa = 0
+        elif exp_name == 'eb2':
+            this_targ_soa = trial['soa'] / 1000  # taking SOA from conf-file and converting to seconds (from ms)
+        elif exp_name == 'eb3':
+            this_targ_soa = soa
+        print('target SOA: ' + str(this_targ_soa) + ' s')
 
         # Cue validity:
         if trial['cue_valid']:
@@ -427,14 +436,15 @@ for trial in trials:
         if shutters:
             # noinspection PyUnboundLocalVariable
             shutter_dur = np.random.normal(blink_dur_ave, blink_dur_std)
-            if shutter_dur > blink_time_window:
-                shutter_dur = blink_time_window - 0.11
+            # if shutter_dur > blink_time_window:
+            #     shutter_dur = blink_time_window - 0.11
             shutter_frames = int(shutter_dur * frame_rate)
         else:
             shutter_dur = 0
 
         # Condition string, to pass to the eye tracker, just in case:
-        cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
+        # cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
+        cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (soa, trial['targ_right'], trial['cue_valid']))
 
     ## Starting the eye-tracking recording.
 
@@ -482,16 +492,26 @@ for trial in trials:
     for fix_1_frame in range(fix_1_frames):
         flip_time = frame_routine()
 
+    #----------------------------------------------
+    # Pre-targ frame loop
+
+    pretarg_frames = int(soa * frame_rate)
+    cue_frames = range(int(cue_dur * frame_rate))
+
     # The location/blink cue:
     event.clearEvents()
     cue_rt_start = flip_time
     cue_rt = 0
     if not dummy_mode:
         tracker.sendMessage('CUE_ONSET %.2f' % flip_time)
-    cue_frames = int(cue_dur * frame_rate)
-    for cue_frame in range(cue_frames):
+
+    for pretarg_frame in range(pretarg_frames):
+
         flip_time = frame_routine()
-        cue_box.draw()
+
+        if pretarg_frame in cue_frames:
+            cue_box.draw()
+
         if noblink or shutters:
             if not cue_rt:
                 cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
@@ -509,51 +529,12 @@ for trial in trials:
                         print(shutter_closing_time)
                         print(shutter_dur)
 
-    # Blink latency = the fixation period after the cue:
+    #----------------------------------------------
+    # Post-targ frame loop
     if not dummy_mode:
+        # Passing arbitrary flip times for BLINK LATENCY and WINDOW as they are not relevant
         tracker.sendMessage('BLINK_LATENCY_ONSET %.2f' % flip_time)
-    blink_latency_frames = int(blink_latency * frame_rate)
-    for blink_latency_frame in range(blink_latency_frames):
-        flip_time = frame_routine()
-        if noblink or shutters:
-            if not cue_rt:
-                cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0 and shutters:
-                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
-                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
-                    print('sent cue RT to the eye tracker')
-                    shutters_shut = close_shutters(dummy_mode)
-                    shutter_closing_time = flip_time
-            if shutters_shut:
-                if (flip_time - shutter_closing_time) >= shutter_dur:
-                    shutters_shut = open_shutters(dummy_mode)
-                    if debug:
-                        print(flip_time)
-                        print(shutter_closing_time)
-                        print(shutter_dur)
-
-    # Real or simulated blink follow the same timeline:
-    blink_time_period_frames = int(blink_time_window * frame_rate)
-    if not dummy_mode:
         tracker.sendMessage('BLINK_WINDOW_ONSET %.2f' % flip_time)
-    for blink_time_period_frame in range(blink_time_period_frames):
-        flip_time = frame_routine()
-        if noblink or shutters:
-            if not cue_rt:
-                cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0 and shutters:
-                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
-                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
-                    print('sent cue RT to the eye tracker')
-                    shutters_shut = close_shutters(dummy_mode)
-                    shutter_closing_time = flip_time
-            if shutters_shut:
-                if (flip_time - shutter_closing_time) >= shutter_dur:
-                    shutters_shut = open_shutters(dummy_mode)
-                    if debug:
-                        print(flip_time)
-                        print(shutter_closing_time)
-                        print(shutter_dur)
 
     ## If the goggles are still somehow shut, opening them forcefully:
     if shutters:
@@ -654,7 +635,7 @@ for trial in trials:
                                          'cue_pred': cue_pred,
                                          'subj': exp_info['subj'],
                                          'cond': exp_info['cond'],
-                                         'sess': exp_info['sess'],
+                                         'block': exp_info['block'],
                                          'trial_id': n_trials_done,
                                          'cue_delay': cue_delay,
                                          'targ_right': trial['targ_right'],
@@ -671,7 +652,7 @@ for trial in trials:
         output_mat[n_trials_done - 1] = {'exp_name': exp_name,
                                          'subj': exp_info['subj'],
                                          'cond': exp_info['cond'],
-                                         'sess': exp_info['sess'],
+                                         'block': exp_info['block'],
                                          'trial_id': n_trials_done,
                                          'cue_delay': cue_delay,
                                          'trial_start': trial_t_start,
