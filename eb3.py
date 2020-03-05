@@ -35,7 +35,7 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 ## Initial variables.
 # experiment modes:
 toshi = False
-dummy_mode = False
+dummy_mode = True
 debug = False
 drift_check = False
 # experiment variables:
@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'0', u'cond': u'c', u'block': u'1', u'soa': u'1300'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -88,7 +88,7 @@ if exp_name == 'eb1':
 elif exp_name == 'eb2':
     cue_pred = 1
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
-if exp_name == 'eb2':
+elif exp_name == 'eb3':
     cue_pred = 1
     trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
     soa = int(exp_info['soa'])
@@ -150,7 +150,7 @@ if not measure:
     elif exp_name == 'eb2':  # for experiments eb2 and 3, a single conditions file is taken:
         exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')
     elif exp_name == 'eb3':  # for eb3, SOA is determined by user input
-        exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_predictive.xlsx')
+        exp_conditions = importConditions('cond-files/cond_eb1_cue_predictive.xlsx')
 else:
     exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
 
@@ -308,7 +308,7 @@ def frame_routine():
 def monitor_cue_resp(flip_time_, cue_rt_start_):
     space_key = event.getKeys(keyList=['space'])
     if len(space_key) > 0:
-        print('subject pressed the Space key (Artificial Blink condition)')
+        print('The "space" key was pressed.')
         cue_rt_ = flip_time_ - cue_rt_start_
         return cue_rt_
     else:
@@ -333,22 +333,25 @@ def open_shutters(dummy_mode_):
     return shutters_shut_
 
 # Also no variation across frames, but only available upon call, which is made only in key registering phase.
-def exit_routine(debug_mode_):
-    if shutters:
-        if not debug_mode_:
-            ser.write('z')
+def exit_routine():
+    # attempting to close the goggles:
+    print('Initiating the exit routine.')
+    try:
+        ser.write('z')
         print('Closed the goggles.')
+    except:
+        print('Failed to close the goggles -- they might not have been used.')
 
     # Behavioural data output:
     if not output_mat:  # means that the dictionary is empty
-        print('the output file is empty')
+        print('The output file is empty.')
     else:
         if measure:
             data_columns = ['exp_name', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
             data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'targ_right',
-                            'cue_valid', 'targ_soa', 'blink_latency', 'shutter_dur', 'trial_start', 'trial_end',
-                            'cue_rt', 'corr_resp', 'rt']
+                            'cue_valid', 'targ_soa', #'blink_latency',
+                            'shutter_dur', 'trial_start', 'trial_end', 'cue_rt', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
 
@@ -422,7 +425,7 @@ for trial in trials:
         elif exp_name == 'eb2':
             this_targ_soa = trial['soa'] / 1000  # taking SOA from conf-file and converting to seconds (from ms)
         elif exp_name == 'eb3':
-            this_targ_soa = soa
+            this_targ_soa = soa / 1000
         print('target SOA: ' + str(this_targ_soa) + ' s')
 
         # Cue validity:
@@ -495,7 +498,7 @@ for trial in trials:
     #----------------------------------------------
     # Pre-targ frame loop
 
-    pretarg_frames = int(soa * frame_rate)
+    pretarg_frames = int(this_targ_soa * frame_rate)
     cue_frames = range(int(cue_dur * frame_rate))
 
     # The location/blink cue:
@@ -512,16 +515,26 @@ for trial in trials:
         if pretarg_frame in cue_frames:
             cue_box.draw()
 
+        # In both no-blink and shutters condition, registering the key response to cue:
         if noblink or shutters:
             if not cue_rt:
                 cue_rt = monitor_cue_resp(flip_time, cue_rt_start)
-                if cue_rt > 0 and shutters:
+
+        # If the shutters are being used,
+        if shutters:
+            # ...but are not yet closed...
+            if not shutters_shut:
+                # ...monitoring for the key response to cue...
+                if cue_rt > 0:
+                    # ...to close the shutters:
                     tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
                     tracker.sendMessage('CUE_RT %.2f' % cue_rt)
-                    print('sent cue RT to the eye tracker')
+                    print('Sent cue RT to the eye tracker.')
                     shutters_shut = close_shutters(dummy_mode)
                     shutter_closing_time = flip_time
-            if shutters_shut:
+            # If the shutters are already closed...
+            else:
+                # ... monitoring the elapsed time from key press to open the shutters when shutter duration is exceeded:
                 if (flip_time - shutter_closing_time) >= shutter_dur:
                     shutters_shut = open_shutters(dummy_mode)
                     if debug:
@@ -531,29 +544,31 @@ for trial in trials:
 
     #----------------------------------------------
     # Post-targ frame loop
+    print('Post-target frame loop.')
     if not dummy_mode:
         # Passing arbitrary flip times for BLINK LATENCY and WINDOW as they are not relevant
         tracker.sendMessage('BLINK_LATENCY_ONSET %.2f' % flip_time)
         tracker.sendMessage('BLINK_WINDOW_ONSET %.2f' % flip_time)
+        tracker.sendMessage('RESPONSE_ONSET %.2f' % flip_time)
 
-    ## If the goggles are still somehow shut, opening them forcefully:
-    if shutters:
-        print('cue_rt ' + str(cue_rt))
-        if debug:
-            print(shutters_shut)
-        if shutters_shut:
-            shutters_shut = open_shutters(dummy_mode)
-            print('Opened the goggles "forcefully".')
+        # If the goggles are still somehow shut, opening them forcefully:
+        if shutters:
+            print('cue_rt ' + str(cue_rt))
             if debug:
-                print(flip_time)
-                print(shutter_closing_time)
-                print(shutter_dur)
+                print(shutters_shut)
+            if shutters_shut:
+                shutters_shut = open_shutters(dummy_mode)
+                print('Opened the goggles "forcefully".')
+                if debug:
+                    print(flip_time)
+                    print(shutter_closing_time)
+                    print(shutter_dur)
 
     ## Behavioural response: measuring the reaction time:
     event.clearEvents()
-    if not dummy_mode:
-        tracker.sendMessage('RESPONSE_ONSET %.2f' % flip_time)
+
     if not measure:
+        print('Tracking response to target.')
 
         # In the [eb2] experiment, introducing a delay period after which the target is displayed
         if exp_name == 'eb2' and this_targ_soa > 0:
@@ -641,7 +656,7 @@ for trial in trials:
                                          'targ_right': trial['targ_right'],
                                          'cue_valid': trial['cue_valid'],
                                          'targ_soa': this_targ_soa,
-                                         'blink_latency': blink_latency,
+                                         # 'blink_latency': blink_latency,
                                          'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,
                                          'trial_end': flip_time,
@@ -671,4 +686,4 @@ for trial in trials:
         tracker.stopRecording()
 
 # Finishing the experiment
-exit_routine(dummy_mode)
+exit_routine()
