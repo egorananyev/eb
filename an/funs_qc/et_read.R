@@ -5,7 +5,7 @@
 # Getting the data directory
 get_dir = function(dropbox_dir, eb, cue, subj, cond, sess){
     cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
-    this_sess = paste0('sess-', as.character(sess))
+    this_sess = paste0('block-', as.character(sess))
     data_dir = paste(cond_dir, dir(cond_dir, pattern=this_sess), sep='/')
     # TEMP: for now, just taking the last directory:
     # all_data_dirs = list.dirs(cond_dir)[-1]  # excluding the first (base) directory
@@ -16,6 +16,8 @@ get_dir = function(dropbox_dir, eb, cue, subj, cond, sess){
 # Function for reading faw .asc.gz files
 read_em = function(data_dir){
     file_name = dir(data_dir, pattern='.asc.gz')
+    print(file_name)
+    print(dir(data_dir))
     file_path = paste(data_dir, file_name, sep='/')
     # Read in the data:
     print(file_path)

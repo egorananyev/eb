@@ -21,16 +21,16 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 # options(width=100)
-eb = '2'
-subj = 'subj-13'
-cond = 'cond-a'
+eb = '3'
+subj = 'subj-00'
+cond = 'cond-m'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-sess = 2
+sess = 1
 debug = F
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
 if(computer=='acer'){ dropbox_dir='/Users/egora/Dropbox/' }
 if(computer=='station3'){ dropbox_dir='/home/station3/Desktop/Egor/Dropbox/' }

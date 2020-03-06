@@ -35,7 +35,7 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 ## Initial variables.
 # experiment modes:
 toshi = False
-dummy_mode = True
+dummy_mode = False
 debug = False
 drift_check = False
 # experiment variables:
@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'0', u'cond': u'c', u'block': u'1', u'soa': u'1300'}
+exp_info = {u'subj': u'0', u'cond': u'a', u'block': u'1', u'soa': u'600'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -90,7 +90,7 @@ elif exp_name == 'eb2':
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
 elif exp_name == 'eb3':
     cue_pred = 1
-    trial_n = 5  # trials per condition row; 5 gives 40 trials (per block)
+    trial_n = 10  # trials per condition row; 5 gives 40 trials (per block); 20 ~ 9 min
     soa = int(exp_info['soa'])
     # with 11 blocks, the above session should last 40-50 min.
 
@@ -116,10 +116,12 @@ else:
         if not dummy_mode:
             ser = serial.Serial('/dev/ttyACM0', 9600)
             ser.write('c')  # both sides clear
-        shutters_shut = False
+        shutters_shut = False  # this keeps track of whether the shutters were shut
+        shutters_opened = False  # this is an additional tracker for when the shutters were already closed on this trial
     if exp_info['cond'] == 'c':
         noblink = True
         shutters_shut = False
+        shutters_opened = False
 
 # Handling condition instructions:
 if measure:
@@ -152,7 +154,7 @@ if not measure:
     elif exp_name == 'eb3':  # for eb3, SOA is determined by user input
         exp_conditions = importConditions('cond-files/cond_eb1_cue_predictive.xlsx')
 else:
-    exp_conditions = importConditions('cond-files/cond_' + exp_name + '_m.xlsx')
+    exp_conditions = importConditions('cond-files/cond_eb1_m.xlsx')
 
 # The output directory will depend on whether the cue is predictive (regardless of whether it's eb1 or eb2):
 if cue_pred:
@@ -406,6 +408,7 @@ for trial in trials:
     if measure:
         # blink_latency = blink_latency_max / 1000
         cond_str = ''
+        this_targ_soa = 600 / 1000
     else:
         # Randomize the duration of the post-cue fixation & converting to sec:
         # blink_latency = np.random.randint(blink_latency_min,
@@ -439,9 +442,12 @@ for trial in trials:
         if shutters:
             # noinspection PyUnboundLocalVariable
             shutter_dur = np.random.normal(blink_dur_ave, blink_dur_std)
+            print('shutter_dur = ' + str(shutter_dur))
             # if shutter_dur > blink_time_window:
             #     shutter_dur = blink_time_window - 0.11
             shutter_frames = int(shutter_dur * frame_rate)
+            shutters_shut = False  # this keeps track of whether the shutters were shut
+            shutters_opened = False  # this is an additional tracker for when shutters were already closed this trial
         else:
             shutter_dur = 0
 
@@ -523,7 +529,7 @@ for trial in trials:
         # If the shutters are being used,
         if shutters:
             # ...but are not yet closed...
-            if not shutters_shut:
+            if not shutters_shut and not shutters_opened:
                 # ...monitoring for the key response to cue...
                 if cue_rt > 0:
                     # ...to close the shutters:
@@ -533,10 +539,12 @@ for trial in trials:
                     shutters_shut = close_shutters(dummy_mode)
                     shutter_closing_time = flip_time
             # If the shutters are already closed...
-            else:
+            if shutters_shut and not shutters_opened:
                 # ... monitoring the elapsed time from key press to open the shutters when shutter duration is exceeded:
+                print(flip_time - shutter_closing_time)
                 if (flip_time - shutter_closing_time) >= shutter_dur:
                     shutters_shut = open_shutters(dummy_mode)
+                    shutters_opened = True
                     if debug:
                         print(flip_time)
                         print(shutter_closing_time)
