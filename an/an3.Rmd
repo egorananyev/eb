@@ -1,0 +1,722 @@
+---
+title: '[eb3] Analyses'
+author: "Egor Ananyev"
+date: '2020-03-09'
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
+    html_document:
+      number_sections: yes
+      toc: yes
+      toc_depth: 4
+      toc_float: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+editor_options:
+  chunk_output_type: inline
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+
+# Data input and parsing
+```{r set-options, message=F}
+# options(width=100)
+# options(width=90)
+out=F
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(reshape2)
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
+source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+library(R.utils)
+sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+source(paste(cloud_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
+ds = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/ds3.csv', sep='/'))
+dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa3.csv', sep='/'))
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
+ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
+cue_valid_name = 'Cue Validity'
+```
+
+
+# Cueing
+
+
+## Boxplots
+```{r, fig.width=8.5, fig.height=2.5, results="hide"}
+#TODO test this code
+ctoa_valid = ddply(ds[ds$CueValid=='Valid',], .(targ_soa, Cond, subj), summarise,
+                   RT=median(RT))
+plot_box_ctoa(ctoa_valid, 'RT Valid (ms)', 'RT on Valid Trials', out, 'targ_soa', eb='eb3')
+ctoa_invalid = ddply(ds[ds$CueValid=='Invalid',], .(targ_soa, Cond, subj), summarise, 
+                  RT=median(RT))
+plot_box_ctoa(ctoa_invalid, 'RT Invalid (ms)', 'RT on Invalid Trials', out, 'targ_soa', eb='eb3')
+ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('targ_soa', 'Cond', 'subj'))
+ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
+plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
+```
+
+
+
+
+## All-data RT plot
+```{r, fig.width=8.5, fig.height=5.5}
+## Heavy smoothing (gam)
+p = ggplot(data=ds, aes(x=targ_soa, y=RT, color=CueValid)) + 
+    geom_smooth(method='gam', alpha=0.15, aes(fill=CueValid), formula=y~s(x, bs="cs")) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~.) + guides(alpha=F) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~ctoa_gam', w=5.5, h=3.5)}
+plot(p)
+## Light smoothing (loess with a small span)
+p = ggplot(data=ds, aes(x=targ_soa, y=RT, color=CueValid)) + 
+    geom_smooth(method='loess', alpha=0.15, aes(fill=CueValid), span=0.15) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(Cond~.) + guides(alpha=F) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~ctoa_loess', w=5.5, h=3.5)}
+plot(p)
+```
+
+
+## Power spectrum
+```{r, fig.width=8.5, fig.height=3.5}
+sample_rate = 40  # sampling rate
+fur = function(dsin, this_cond){
+  # Multiplier is the sampling rate (per second), max is the number of steps:
+  ft <- fft(acf(dsin$RT[dsin$Cond==this_cond], type="covariance", plot=F)$acf)
+  A <- (Re(ft)^2 + Im(ft)^2)^.5 #amplitude is magnitude
+  freq <- (1:nrow(ft))*sample_rate/nrow(ft)
+  PSD <- cbind.data.frame(freq,A)
+  return(PSD)
+}
+all_furs = data.frame()
+for(cur_cond in unique(ds$Cond)){
+  this_fur = fur(ds, cur_cond)
+  this_fur$Cond = cur_cond
+  all_furs = rbind(this_fur, all_furs)
+}
+all_furs$Cond <- factor(all_furs$Cond, c('NoBlink', 'Artificial', 'Prompted'))
+p = ggplot(all_furs, aes(x=freq, y=A, color=Cond)) + geom_line() + 
+  ylim(2500, 10000) +
+  xlim(0.8, sample_rate/2) + 
+  xlab('Frequency') + ylab('Amplitude') + 
+  guides(color=guide_legend(title='Blink Condition'))
+p = plot_themefy(p)
+if(out){outpdf('eb3_adv-spectra~ctoa', h=1.7, s=T)}
+suppressWarnings(plot(p))
+```
+
+
+## Analyses
+
+```{r}
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) # this works for lm
+# The cueing effect as a function of CTOA
+# lmerfn(lmer(RT~Cond*cue_valid*ctoa_lowbound_s + (1|subj), data=ds))
+# lmerfn(lm(RT~Cond*cue_valid_c*ctoa_lowbound_s, data=ds))
+```
+
+
+### Continuous CTOA
+
+```{r}
+## Uncentered validity
+lmerfn(lmer(RT~cue_valid*ctoa0_s*Cond + (1|subj), data=ds))
+## Centered validity
+# lmerfn(lmer(RT~cue_valid_c*ctoa_s*Cond + (1|subj), data=ds))
+```
+
+No validity effect for a continuous CTOA, although there is a marginal interaction between validity and CTOA, implying a slight facilitation at later CTOAs.
+
+
+### Short CTOAs only
+
+```{r}
+## A weak model requiring a correction for multiple comparisons:
+lmerfn(lmer(RT~cue_valid*Cond + (1|subj), data=ds[ds$ctoa3=='Short CTOA',]))
+```
+
+A marginally significant cueing effect, but not specific to any condition.
+
+
+### Binned CTOA
+
+```{r}
+## A full model with a binned variable based on ctoa3's 0-0.5-1 iteration, assuming linearity:
+head(dsa[,c('ctoa', 'ctoa3', 'ctoa3_bin0')])
+lmerfn(lmer(RT~cue_valid*Cond*ctoa3_bin0 + (1|subj), data=ds))
+```
+
+This model is similar to the continuous one, and it also doesn't show validity effect, although there is a marginally significant interaction with CTOA, showing a possible cueing facilitation at later CTOAs.
+
+```{r}
+## A full model, but with CTOA bins as factor:
+lmerfn(lmer(RT~cue_valid*Cond*ctoa3 + (1|subj), data=ds))
+```
+
+This model is the "loosest" of them, as it treats CTOA bins as independent. Although it shows a validity effect specific to short CTOAs, this cueing is not specific to any condition.
+
+
+# Creating blink paramater variables
+
+```{r}
+# The "merge-by" parameter -- important as to whether the average is taken over subject and condition, or something else:
+merge_by = c('subj', 'Cond')
+dsa$blank_time_beg = 1000 * (dsa$blank_time_beg)
+dsa$blank_time_beg_c = dsa$blank_time_beg - mean(dsa$blank_time_beg)
+# head(dsa[,c('blank_time_beg', 'cue_time', 'trial_time_beg')])
+# Centering blink duration properly
+dsa$blink_dur = dsa$tot_blank_time
+blink_dur_sumss = ddply(dsa, .(Cond, subj), summarize, 
+                        blink_dur_ave = mean(blink_dur),
+                        blink_dur_sd = sd(blink_dur))
+dsa = merge(dsa, blink_dur_sumss, by=merge_by)
+dsa$blink_dur_z = with(dsa, (blink_dur - blink_dur_ave) / blink_dur_sd)
+# Blink onset
+dsa$blat = dsa$blank_time_beg - 1000 * (dsa$cue_time - dsa$trial_time_beg)
+blat_sumss = ddply(dsa, .(subj, Cond), summarise,
+                blat_ave = mean(blat),
+                blat_sd = sd(blat))
+dsa = merge(dsa, blat_sumss, by=merge_by)
+dsa$blat_z = with(dsa, (blat - blat_ave) / blat_sd)
+# Blink-target asynchrony
+dsa$btoa = 1000 * (dsa$targ_time - dsa$trial_start - dsa$blank_time_end)
+# dsa$btoa_c = dsa$btoa - mean(dsa$btoa)
+btoa_sumss = ddply(dsa, .(subj, Cond), summarise,
+                btoa_ave = mean(btoa),
+                btoa_sd = sd(btoa))
+dsa = merge(dsa, btoa_sumss, by=merge_by)
+dsa$btoa_z = with(dsa, (btoa - btoa_ave) / btoa_sd)
+```
+
+
+# Normalized blink durations - Mean split
+
+```{r}
+dsa$blink_dur_split = NA
+dsa$blink_dur_split[dsa$blink_dur_z < 0] = 'Short Blink'
+dsa$blink_dur_split[dsa$blink_dur_z > 0] = 'Long Blink'
+dsa$blink_dur_split = factor(dsa$blink_dur_split, c('Short Blink', 'Long Blink'))
+```
+
+```{r, fig.width=7, fig.height=3.5}
+blink_dur_indiv = ddply(dsa, .(subj, Cond, CueValid, blink_dur_split, ctoa3), summarize,
+                         RT_subj_mean = mean(RT))
+p = ggplot(blink_dur_indiv, aes(x=blink_dur_split, y=RT_subj_mean, color=CueValid)) +
+    geom_boxplot() + facet_grid(Cond~ctoa3) + xlab('Blink Duration') + ylab('Reaction Time') +
+    guides(color=guide_legend(title='Cue Validity'))
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z-split&ctoa-disc_box', w=7, h=3.5)}
+print(p)
+```
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=ctoa, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    facet_grid(Cond~blink_dur_split) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('CTOA (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z-split&ctoa-cont_curve', w=5.5)}
+print(p)
+p = ggplot(dsa, aes(x=ctoa, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~blink_dur_split) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('CTOA (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z-split&ctoa-cont_lin', w=5.5)}
+print(p)
+```
+There actually does appear to be a difference between long and short blinks in the amount of cueing present in the data, but it disappears with linear fitting. Again, this means that analyzing these data in a continuous manner is not the best idea.
+
+
+# Normalized blink durations - Continuous z
+
+
+## Without CTOA
+
+```{r, fig.width=4, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) #+ geom_point(alpha=0.05)
+p = plot_themefy(p)
+print(p)
+p = p + xlim(-2.5, 2.5)
+suppressWarnings(plot(p))
+```
+
+At first glance, the differences look dramatic, but then it appears that they only emerge outside of ±2.5 SD, where only 1.24% of data resides (per SD calculator). However, there does seem to be something happening before that as well, around 1-2 SD below and above. Those regions correspond to about 31.75% of data, or ~15% on each side. A mean split may therefore still be meaningful.
+
+Zooming in on [-2.5 to 2.5] z: Looks wiggly, but that's all I can say. Should be wary of the loess fit.
+
+The above graphs do not consider the blink condition differences. If those are considered, this is what they look like with "gam" and linear fits:
+
+```{r, fig.width=4, fig.height=3}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    xlim(-2.5, 2.5) + facet_grid(Cond~.)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + 
+    xlim(-2.5, 2.5) + facet_grid(Cond~.)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+```
+
+
+## Discrete CTOAs
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    xlim(-2.5, 2.5) + facet_grid(Cond~ctoa3)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + facet_grid(Cond~ctoa3) + xlim(-2.5, 2.5)
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z&ctoa-disc_lin', w=5.5, h=3.5, s=T)}
+suppressWarnings(plot(p))
+```
+
+This is not exactly what the linear model would see, because there are no individual slopes. Looking at this visualization, there is an apparent IOR only at short CTOAs. If we look only at those CTOAs, it appears that IOR is present only for short blinks in the AB condition, but long blinks in the PB condition. This is quite odd.
+
+Just in case, checked the instance where the range of normalized blink duration is unrestricted, which shows largely the same pattern:
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + facet_grid(Cond~ctoa3) #+
+    # xlim(-2.5, 2.5)
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z&ctoa-disc_lin_full-range', w=5.5, h=2.5, s=T)}
+suppressWarnings(plot(p))
+```
+
+
+### Individual slopes
+
+```{r, fig.width=5.5, fig.height=4.5}
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, lty=CueValid, color=factor(subj)), alpha=0.1) + 
+    stat_smooth(method='lm', se=F) + facet_grid(Cond*CueValid~ctoa3) + 
+    guides(color=F) + theme_bw()
+if(out){outpdf('eb3_rt~bdur-z&ctoa-disc_slopes-lin', w=5.5, h=4.5, s=T)}
+suppressWarnings(plot(p))
+dsa$fit = predict(lmer(RT~blink_dur_z*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+p = ggplot(dsa, aes(x=blink_dur_z, y=RT, lty=CueValid)) + 
+    geom_line(aes(y=fit, color=factor(subj))) + facet_grid(Cond~ctoa3) +
+    guides(color=F) + theme_bw()
+# p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z&ctoa-disc_fit', w=5.5, h=4.5, s=T)}
+suppressWarnings(plot(p))
+```
+
+
+### Correlations
+
+```{r, fig.width=7.0, fig.height=3.5}
+cor_blink_dur_z = ddply(dsa, .(subj, CueValid, Cond, ctoa3), summarise,
+                        corcoeff = cor(RT, blink_dur_z))
+p = ggplot(cor_blink_dur_z, aes(x=CueValid, y=corcoeff, color=CueValid)) +
+    geom_boxplot() + facet_grid(Cond~ctoa3) + xlab('Cue Validity') + 
+    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05, alpha=0.5, 
+                 aes(fill=CueValid)) + 
+    ylab('RT x Norm. Blink Duration Correlation')
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z&ctoa-disc_slopes-cor', w=7.0, h=3.5, s=T)}
+print(p)
+```
+
+
+## Analysis of normalized blink duration
+
+
+### Continuous CTOAs
+
+```{r}
+lmerfn(lmer(RT~blink_dur_z*cue_valid*ctoa0_s*Cond + (1|subj),  data=dsa))
+```
+
+1. No main effect of blink duration. No interactions either.
+2. IOR: A valid cue takes on average 21 ms longer to respond to than an invalid cue.
+3. There is a large effect of CTOA: a one-second increase in CTOA results in about 42 ms reduction in RT.
+4. Cue validity X CTOA interaction: For valid cues, the above reduction amounts to ~ 54 ms.
+
+There is no significant effect of blink duration, it seems. Or even blink condition.
+
+
+### Pseudo-continuous (3-level) CTOAs
+
+```{r}
+## A full model with a binned variable based on ctoa3's 0-0.5-1 iteration, assuming linearity:
+head(dsa[,c('ctoa', 'ctoa3', 'ctoa3_bin0')])
+lmerfn(lmer(RT~blink_dur_z*cue_valid*Cond*ctoa3_bin0 + (1|subj), data=dsa))
+```
+
+1. The IOR (#2) is specific to the earlier CTOAs (#9).
+2. Later CTOAs see a reduction in RT (#4), especifically following longer blinks (#8).
+
+These effects, however, are not condition specific. This analysis is insensitive to the nonlinearities of the CTOA.
+
+
+### Short and medium CTOAs only
+
+```{r}
+## A weak model requiring a correction for multiple comparisons:
+lmerfn(lmer(RT~blink_dur_z*cue_valid*Cond + (1|subj), data=dsa[dsa$ctoa3=='Short CTOA',]))
+```
+
+The model shows a significant three-way interaction between blink duration, cue validity, and blink condition. In this case, the effect in Artificial Blink condition is that of IOR and is not influenced by blink duration. In Prompted Blink condition, however, the IOR is greater with longer blink durations. Although the latter effect is apparent by looking at linear fits, the 
+
+The model says there *might* be a difference, but it’s confined to the prompted condition only. This is a weak model, because it requires a correction for multiple comparisons. Need to run a model with all CTOAs, but crudely separated into three durations.
+
+```{r}
+## A weak model requiring a correction for multiple comparisons:
+lmerfn(lmer(RT~blink_dur_z*cue_valid*Cond + (1|subj), data=dsa[dsa$ctoa3=='Medium CTOA',]))
+```
+
+
+### CTOA bins as factor
+
+```{r}
+## A full model, but with CTOA bins as factor:
+lmerfn(lmer(RT~blink_dur_z*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+```
+
+1. RTs are slightly longer for longer blink durations (#1), but only at short CTOAs (#9,10).
+2. There is an IOR (#2), but not for long CTOAs (#12).
+3. For medium and long CTOAs, the RT is 34-35 ms shorter than the initial CTOAs (#4,5).
+4. The effect of blink duration on cueing (slope difference between valid and invalid condition) is different for PB condition (#15) at short CTOAs (#22,23). Essentially, at short CTOAs, the valid and invalid slopes flip.
+5. At medium CTOAs, the effect of blink duration on cueing is also altered (#16) depending on the blink condition (#18).
+
+
+# Individual differences in blink durations
+
+
+## Blink summary stats
+
+```{r}
+(ddply(dsa, .(subj, Cond), summarise,
+      bdur=mean(tot_blank_time), bdur_sd=sd(tot_blank_time),
+      bdur_min=min(tot_blank_time), bdur_max=max(tot_blank_time) )) #, 
+      # bdur_sub300=sum(tot_blank_time<300), bdur_supra300=sum(tot_blank_time>300),
+      # total=length(tot_blank_time)))
+(ddply(dsa, .(subj, Cond), summarise,
+      blat=mean(blat), blat_sd=sd(blat),
+      blat_min=min(blat), blat_max=max(blat) )) #, 
+      # blat_sub300=sum(blat<300), blat_supra300=sum(blat>300),
+      # total=length(blat)))
+```
+
+
+## Effect on cueing overall
+
+```{r, fig.width=4.5, fig.height=2.5}
+bdur_rt = ddply(dsa[dsa$Cond=='Prompted',], .(subj, CueValid), summarise,
+                RT=mean(RT), bdur=mean(blink_dur), bdur_min=min(blink_dur),
+                bdur_max=max(blink_dur), bdur_sd=sd(blink_dur), 
+                bdur_supra300=length(blink_dur>300))
+p = ggplot(bdur_rt, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+    guides(colour=guide_legend(title='Cue')) + theme_bw() + 
+    theme(legend.position=c(.09, .8), legend.title=element_blank())
+p = plot_themefy(p)
+print(p)
+```
+
+
+## Effect of blink durations on cueing afo/ blink condition
+
+```{r, fig.width=6.5, fig.height=2.5}
+bdur_rt_cond = ddply(dsa, .(subj, CueValid, CondFull), summarise,
+                RT=mean(RT), bdur=mean(blink_dur), bdur_min=min(blink_dur),
+                bdur_max=max(blink_dur), bdur_sd=sd(blink_dur), 
+                bdur_supra300=length(blink_dur>300))
+p = ggplot(bdur_rt_cond, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(.~CondFull) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+    guides(colour=guide_legend(title='Cue')) + theme_bw() + 
+    theme(legend.position=c(.09, .8), legend.title=element_blank())
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-indiv_lin', w=5.5)}
+print(p)
+```
+
+There seems to be a dependence between blink duration and the type of cueing observed: lower blink durations are associated with IOR while higher blink durations are associated with cueing benefit.
+
+Interesting... IOR is associated with individual differences in blink durations? And that's specific to the Prompted Blink condition?
+
+
+## Effect of blink durations on cueing afo/ blink condition and CTOA 
+
+```{r, fig.width=6.5, fig.height=3.5}
+bdur_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, ctoa3), summarise,
+                RT=mean(RT), bdur=mean(blink_dur))
+p = ggplot(bdur_rt_cond_ctoa, aes(x=bdur, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~ctoa3) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-indiv&ctoa-disc_lin', w=5.5)}
+plot(p)
+```
+
+The CTOA does not seem to make a difference in the above pattern of effect of blink durations on cueing.
+
+
+## Analyses
+
+### A model without CTOA
+
+This model seems sufficient: adding CTOA is redundant. This model uses the raw subject/condition-wise blink duration averages. As such, the "reference" is the hypothetical blink duration average of zero, with all "real" (observed) averages being higher.
+
+```{r}
+head(dsa$blink_dur_ave)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur_ave*cue_valid*Cond + (1|subj), data=dsa))
+```
+
+1. Cueing is modulated by blink condition: there is a substantial IOR with prompted blinks at shorter blink durations...
+2. But at longer blink durations, there is a substantial cueing benefit.
+
+
+### Models with CTOA
+
+The addition of CTOA does not seem to contribute meaningfully.
+
+```{r}
+lmerfn(lmer(RT~blink_dur_ave*cue_valid*Cond*ctoa0_s + (1|subj), data=dsa))
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur_ave*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+```
+
+
+# Raw blink duration
+
+Unliked the normalized blink durations, raw blink durations conflate the duration of a blink on individual trial and the individual differences in blink durations overall. This is not typically an issue for mixed linear models, as random variability across participants is taken into account. But it could be problematic to visualize the raw blink durations in a coherent manner. Also, the interpretability of coefficients in linear models will benefit from some tweaks.
+
+Rescaling the blink duration such that 1 unit = 100 ms increment (makes the coefficients more meaningful):
+
+```{r}
+dsa$blink_dur100 = dsa$blink_dur * 10
+dsa$blink_dur_ms = dsa$blink_dur * 1000
+```
+
+
+## Disregarding CTOA
+
+
+### Linear fit
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_ms, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~.) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+print(p)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur100*cue_valid*Cond + (1|subj), data=dsa))
+```
+
+This model finds a different set of effects from the "individual variability" model in the previous section. There is now an overall effect of blink condition:
+1. Prompted blinks benefit RT for invalid cues (#3),
+2. But not if the blink is long (#5: 10 ms detriment for every 100 ms in physiological blink duration).
+3. However, this "long blink cost" is negated if the cue is valid.
+
+
+### Curvilinear fit
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_ms, y=RT, color=CueValid)) + 
+    stat_smooth(method='auto', alpha=0.15) +
+    facet_grid(Cond~ctoa3) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+print(p)
+```
+
+
+## A model with CTOA
+
+
+### Linear fit
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blink_dur_ms, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~ctoa3) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-raw&ctoa-disc_lin', w=5.5, h=3.5, s=T)}
+print(p)
+```
+
+```{r}
+lmerfn(lmer(RT~blink_dur100*cue_valid*Cond*ctoa0_s + (1|subj), data=dsa))
+```
+
+No effect if we try to fit CTOA linearly.
+
+```{r}
+lmerfn(lmer(RT~blink_dur100*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+```
+
+1. Longer blink duration seems to benefit RT for later CTOAs (#9,10),
+2. But not for prompted blinks for the intermediate asynchronies (#18).
+3. Intermediate asynchronies is also where we find the cueing benefit for short artificial blinks (#11),
+4. and cueing detriment (IOR) with shortk13
+ prompted blinks (#20),
+5. although the latter is reversed with longer blinks (#22).
+
+
+# Blink latency
+
+
+## Inter-individual
+
+```{r, fig.width=6.5, fig.height=2.5}
+blat_rt = ddply(dsa, .(subj, CueValid, Cond, ctoa3), summarise,
+                RT=mean(RT), blat=mean(blat))
+p = ggplot(blat_rt, aes(x=blat, y=RT)) + geom_point(aes(color=CueValid)) + 
+  stat_smooth(method='lm', aes(color=CueValid), alpha=.2) +
+  facet_grid(Cond~ctoa3) + xlab('Blink Latency (ms)') + ylab('Reaction Time (ms)') +
+  guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
+  theme(legend.position=c(1.1, .75), legend.title=element_blank(), 
+        legend.box.background = element_rect(colour = "black"),
+        legend.spacing.y = unit(0, "mm"))
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~blat-indiv_ctoa', w=6.5, h=2.5, s=T)}
+plot(p)
+```
+
+```{r}
+head(dsa$blat_ave)
+```
+
+```{r}
+lmerfn(lmer(RT~blat_ave*cue_valid*Cond + (1|subj), data=dsa))
+```
+Participants with delayed blink onset also show slower RTs, regardless of blink condition or cue type.
+
+
+## Normalized blink onsets
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blat_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    xlim(-2.5, 2.5) + facet_grid(Cond~ctoa3)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+p = ggplot(dsa, aes(x=blat_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + facet_grid(Cond~ctoa3) + xlim(-2.5, 2.5)
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~blat-z&ctoa-disc_lin', w=5.5, h=3.5, s=T)}
+suppressWarnings(plot(p))
+```
+
+```{r}
+## A full model with CTOA bins as factor:
+lmerfn(lmer(RT~blat_z*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+```
+* Delays in blink onset were associated with longer RTs (#1).
+* This was particularly the case for valid cues (#6), i.e., "enhanced" IOR, but not for intermediate target onsets (#16).
+
+There was no interaction with the blink condition.
+
+
+# Blink-target onset asynchrony
+
+
+## Inter-individual
+
+```{r, fig.width=6.5, fig.height=2.5}
+btoa_rt = ddply(dsa, .(subj, CueValid, Cond, ctoa3), summarise,
+                RT=mean(RT), btoa=mean(btoa))
+p = ggplot(btoa_rt, aes(x=btoa, y=RT)) + geom_point(aes(color=CueValid)) + 
+  stat_smooth(method='lm', aes(color=CueValid), alpha=.2) +
+  facet_grid(Cond~ctoa3) + xlab('Blink-Target Onset Asynchrony (ms)') + ylab('Reaction Time (ms)') +
+  guides(colour=guide_legend(title=cue_valid_name)) + theme_bw() + 
+  theme(legend.position=c(1.1, .75), legend.title=element_blank(), 
+        legend.box.background = element_rect(colour = "black"),
+        legend.spacing.y = unit(0, "mm"))
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~btoa-indiv_ctoa', w=6.5, h=2.5, s=T)}
+plot(p)
+```
+
+```{r}
+head(dsa$btoa_ave)
+```
+
+```{r}
+lmerfn(lmer(RT~btoa_ave*cue_valid*Cond + (1|subj), data=dsa))
+```
+
+
+## Normalized blink onsets
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=btoa_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
+    xlim(-2.5, 2.5) + facet_grid(Cond~ctoa3)
+p = plot_themefy(p)
+suppressWarnings(plot(p))
+p = ggplot(dsa, aes(x=btoa_z, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) + facet_grid(Cond~ctoa3) + xlim(-2.5, 2.5)
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~btoa-z&ctoa-disc_lin', w=5.5, h=3.5, s=T)}
+suppressWarnings(plot(p))
+```
+
+```{r}
+## A full model with CTOA bins as factor:
+lmerfn(lmer(RT~btoa_z*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
+```
+* Longer blink-target asynchronies resulted in shorter RTs (#1),
+* but not at later CTOA (#10).
+
+If we look at the CTOAs as continuous:
+
+```{r}
+lmerfn(lmer(RT~btoa_z*cue_valid*Cond*ctoa0_s + (1|subj), data=dsa))
+```
+...the effect of blink-target onset asynchrony tends to "wear out" for later CTOAs (#8).
+
+Interestingly, later blink offsets seem to negate the IOR (#9).
+
+
+
+
+
+
+

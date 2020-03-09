@@ -31,26 +31,28 @@ ds_vars = function(ds, ctoa_bin_nof){
   ds$cue_pred_c[ds$cue_pred==0] = -1
   # Reaction time:
   ds$RT = 1000 * ds$rt
-  # CTOA:
-  ds$ctoa_s = .1 + ds$blink_latency + .3 + ds$targ_soa
-  ds$ctoa = ds$ctoa_s * 1000
-  # Binning CTOA:
-  ctoa_bins = seq(640, max(ds$ctoa), length.out=ctoa_bin_nof)  # min(ds$ctoa) -> 640
-  ds$ctoa_bin = cut(ds$ctoa, ctoa_bins)
-  ds$ctoa_lowbound = as.integer(ctoa_bins[as.numeric(ds$ctoa_bin)]) # lower bound
-  print(paste('Excluding', as.character(sum(is.na(ds$ctoa_lowbound))), 'NA values due to binning.'))
-  ds = ds[!is.na(ds$ctoa_lowbound),]  # excluding NAs
-  ds$ctoa_lowbound_s = (ds$ctoa_lowbound / 1000) - (min(ds$ctoa_lowbound) / 1000)
-  # We need a CTOA variable where CTOA_0[640] = 0
-  ds$ctoa0_s = ds$ctoa_s - min(ds$ctoa_s)
-  # Also adding the CTOA variable with three levels:
-  ds$ctoa3 = 'Medium CTOA'
-  ds$ctoa3[ds$ctoa0_s < max(ds$ctoa0_s)/3] = 'Short CTOA'
-  ds$ctoa3[ds$ctoa0_s > 2 * max(ds$ctoa0_s)/3] = 'Long CTOA'
-  # The 0-0.5-1 version of the above:
-  ds$ctoa3_bin0 = 0
-  ds$ctoa3_bin0[ds$ctoa3=='Medium CTOA'] = 0.5
-  ds$ctoa3_bin0[ds$ctoa3=='Long CTOA'] = 1
+  if(ctoa_bin_nof>0){  # only bin CTOA for experiments 1 and 2, where it varies
+    # CTOA:
+    ds$ctoa_s = .1 + ds$blink_latency + .3 + ds$targ_soa
+    ds$ctoa = ds$ctoa_s * 1000
+    # Binning CTOA:
+    ctoa_bins = seq(640, max(ds$ctoa), length.out=ctoa_bin_nof)  # min(ds$ctoa) -> 640
+    ds$ctoa_bin = cut(ds$ctoa, ctoa_bins)
+    ds$ctoa_lowbound = as.integer(ctoa_bins[as.numeric(ds$ctoa_bin)]) # lower bound
+    print(paste('Excluding', as.character(sum(is.na(ds$ctoa_lowbound))), 'NA values due to binning.'))
+    ds = ds[!is.na(ds$ctoa_lowbound),]  # excluding NAs
+    ds$ctoa_lowbound_s = (ds$ctoa_lowbound / 1000) - (min(ds$ctoa_lowbound) / 1000)
+    # We need a CTOA variable where CTOA_0[640] = 0
+    ds$ctoa0_s = ds$ctoa_s - min(ds$ctoa_s)
+    # Also adding the CTOA variable with three levels:
+    ds$ctoa3 = 'Medium CTOA'
+    ds$ctoa3[ds$ctoa0_s < max(ds$ctoa0_s)/3] = 'Short CTOA'
+    ds$ctoa3[ds$ctoa0_s > 2 * max(ds$ctoa0_s)/3] = 'Long CTOA'
+    # The 0-0.5-1 version of the above:
+    ds$ctoa3_bin0 = 0
+    ds$ctoa3_bin0[ds$ctoa3=='Medium CTOA'] = 0.5
+    ds$ctoa3_bin0[ds$ctoa3=='Long CTOA'] = 1
+  }
   return(ds)
 }
 
@@ -65,20 +67,20 @@ ds_et_merge = function(et, ds){
                  (et_filt$blank_sample_end < et_filt$targ_sample) &
                  (!is.na(et_filt$blank_sample_beg)),]
   # CHECK: Test row to check if the above works:
-  # ( et_filt[et_filt$subj==3 & et_filt$sess==1 & et_filt$cond=='v' & et_filt$cue_pred==1 & et_filt$trial==11,] )
-  # ( et_filt2[et_filt2$subj==3 & et_filt2$sess==1 & et_filt2$cond=='v' & et_filt2$cue_pred==1 & et_filt2$trial==11,] )
+  # ( et_filt[et_filt$subj==3 & et_filt$block==1 & et_filt$cond=='v' & et_filt$cue_pred==1 & et_filt$trial==11,] )
+  # ( et_filt2[et_filt2$subj==3 & et_filt2$block==1 & et_filt2$cond=='v' & et_filt2$cue_pred==1 & et_filt2$trial==11,] )
   
   # Also excluding trials with more than one blink in the above time frame:
-  num_blanks = ddply(et_filt2, .(subj, cue_pred, cond, sess, trial), 
+  num_blanks = ddply(et_filt2, .(subj, cue_pred, cond, block, trial), 
                      summarise, num_blanks = length(trial))
   et_filt3 = anti_join(et_filt2, num_blanks[num_blanks$num_blanks>1,],
-                      by=c('subj', 'cue_pred', 'cond', 'sess', 'trial'))
+                      by=c('subj', 'cue_pred', 'cond', 'block', 'trial'))
   # CHECK: Based on the above filter, the following number of blanks (rows) should have been removed:
   # sum(num_blanks[num_blanks$num_blanks>1,'num_blanks'])  # should be the same as:
   # nrow(et_filt2) - nrow(et_filt3)
   
   # Merging:
-  ds = merge(ds[ds$cond!='c',], et_filt3, by=c('subj', 'cue_pred', 'sess', 'trial', 'cond'))
+  ds = merge(ds[ds$cond!='c',], et_filt3, by=c('subj', 'cue_pred', 'block', 'trial', 'cond'))
   return(ds)
 }
 

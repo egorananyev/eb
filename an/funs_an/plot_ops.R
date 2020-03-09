@@ -34,16 +34,21 @@ plot_themefy = function(p_in){
 }
 
 # Plotting box plot data across CTOAs
-plot_box_ctoa = function(sss, y_lab, plot_title, out){
-  p = ggplot(data=sss, aes(x=factor(ctoa_lowbound), y=RT, fill=Cond)) + 
+plot_box_ctoa = function(sss, y_lab, plot_title, out, x_str = 'ctoa_lowbound', eb = 'eb'){
+  sss$x = sss[,x_str]  # this allows plotting non-binned CTOAs; x_str needs to change to a diff var
+  p = ggplot(data=sss, aes(x=factor(x), y=RT, fill=Cond)) + 
       geom_boxplot() + xlab('Cue-to-Target Asynchrony (ms)') + ylab(y_lab) +
       theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5)) +
       ggtitle(plot_title) + guides(alpha=F)
-  if('CuePredFull' %in% colnames(sss)){  # means eb1
-    p = p + facet_grid(.~CuePredFull)
-    eb_string = 'eb1_ctoa'
+  if(eb == 'eb'){
+    if('CuePredFull' %in% colnames(sss)){  # means eb1
+      p = p + facet_grid(.~CuePredFull)
+      eb_string = 'eb1_ctoa'
+    } else {
+      eb_string = 'eb2_ctoa'
+    }
   } else {
-    eb_string = 'eb2_ctoa'
+    eb_string = paste0(eb, '_ctoa')
   }
   p = plot_themefy(p)
   plot(p)
@@ -53,5 +58,3 @@ plot_box_ctoa = function(sss, y_lab, plot_title, out){
     dev.off()
   }
 }
-
-# Plotting smooth line plots

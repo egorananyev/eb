@@ -23,21 +23,20 @@ code.r{
 # options(width=100)
 eb = '3'
 subj = 'subj-00'
-cond = 'cond-m'
+cond = 'cond-v'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-sess = 1
+block = 1
 debug = F
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer=='shocky'){ dropbox_dir='/Users/Egor/Dropbox/' }
-if(computer=='acer'){ dropbox_dir='/Users/egora/Dropbox/' }
-if(computer=='station3'){ dropbox_dir='/home/station3/Desktop/Egor/Dropbox/' }
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 library(R.utils)
-sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_qc', sep='/'))
+sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_qc', sep='/'))
 # Getting the data directory:
-data_dir = get_dir(dropbox_dir, eb, cue, subj, cond, sess)
+data_dir = get_dir(cloud_dir, eb, cue, subj, cond, block)
 # Reading raw data:
 raw_data = read_em(data_dir)
 # Parsing samples:
