@@ -42,13 +42,15 @@ library(ggplot2)
 library(lme4)
 library(reshape2)
 computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
+if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'Users/egora/Dropbox/' }
+# if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
 source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
 library(R.utils)
 sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
-source(paste(cloud_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
+source(paste('C:/gd/', 'Prog/R/myFunctions/pvalfn.R', sep=''))
 ds = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/ds3.csv', sep='/'))
 dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa3.csv', sep='/'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:

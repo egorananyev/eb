@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="Egor Ananyev" />
@@ -270,7 +271,6 @@ code {
 }
 img {
   max-width:100%;
-  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
@@ -344,18 +344,6 @@ summary {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 
 
@@ -403,9 +391,12 @@ code.r{
 <pre class="r"><code>options(width=100)
 debug = F
 library(plyr)
-library(dplyr)
-computer = &#39;shocky&#39;  # &#39;shocky&#39;, &#39;station3&#39;, &#39;acer&#39; are all possible options
-if(computer==&#39;shocky&#39; || computer==&#39;acer&#39; || computer == &#39;toshi&#39;){ cloud_dir=&#39;C:/gd/&#39; }
+library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.6.1</code></pre>
+<pre class="r"><code>computer = &#39;shocky&#39;  # &#39;shocky&#39;, &#39;station3&#39;, &#39;acer&#39; are all possible options
+if(computer==&#39;shocky&#39;){ cloud_dir=&#39;/Users/Egor/Dropbox/&#39; }
+if(computer==&#39;acer&#39; || computer == &#39;toshi&#39;){ cloud_dir = &#39;Users/egora/Dropbox/&#39; }
+# if(computer==&#39;shocky&#39; || computer==&#39;acer&#39; || computer == &#39;toshi&#39;){ cloud_dir=&#39;C:/gd/&#39; }
 if(computer==&#39;station3&#39;){ cloud_dir=&#39;/home/station3/Desktop/Egor/Dropbox/&#39; }
 all_data_dir = paste0(cloud_dir, &#39;Projects/eb/data/eb3/&#39;)
 conds = c(&#39;cond-a&#39;, &#39;cond-c&#39;, &#39;cond-v&#39;)
@@ -510,6 +501,9 @@ library(R.utils)</code></pre>
 <pre><code>## Loading required package: R.oo</code></pre>
 <pre><code>## Loading required package: R.methodsS3</code></pre>
 <pre><code>## R.methodsS3 v1.7.1 (2016-02-15) successfully loaded. See ?R.methodsS3 for help.</code></pre>
+<pre><code>## Registered S3 method overwritten by &#39;R.oo&#39;:
+##   method        from       
+##   throw.default R.methodsS3</code></pre>
 <pre><code>## R.oo v1.22.0 (2018-04-21) successfully loaded. See ?R.oo for help.</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;R.oo&#39;</code></pre>
@@ -527,21 +521,21 @@ library(R.utils)</code></pre>
 ##     timestamp</code></pre>
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
-##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
+##     cat, commandArgs, getOption, inherits, isOpen, nullfile, parse, warnings</code></pre>
 <pre class="r"><code>sourceDirectory(paste(cloud_dir, &#39;Projects/eb/eb/an/funs_an&#39;, sep=&#39;/&#39;))
 cols_to_include = c(&#39;subj&#39;, &#39;cue_pred&#39;, &#39;cond&#39;, &#39;block&#39;, &#39;trial&#39;)
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt&lt;short_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_short, &#39;short RT&#39;)</code></pre>
-<pre><code>## [1] &quot;short RT 21&quot;</code></pre>
+<pre><code>## [1] &quot;short RT 36&quot;</code></pre>
 <pre class="r"><code># Excluding trials with long RTs:
 excl_long = ds[ds$rt&gt;long_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_long, &#39;long RT&#39;)</code></pre>
-<pre><code>## [1] &quot;long RT 8&quot;</code></pre>
+<pre><code>## [1] &quot;long RT 14&quot;</code></pre>
 <pre class="r"><code># Excluding trials with false responses (analyzed separately from RTs):
 excl_false = ds[ds$corr_resp==0, cols_to_include]
 excl = ds_exclude(excl_false, &#39;incorrect response&#39;)</code></pre>
-<pre><code>## [1] &quot;incorrect response 12&quot;</code></pre>
+<pre><code>## [1] &quot;incorrect response 24&quot;</code></pre>
 <pre class="r"><code># Displaying number of trials to be excluded, based on condition and block
 head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))</code></pre>
 <pre><code>##   subj cue_pred cond        excl_reason num_excl
@@ -595,6 +589,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>

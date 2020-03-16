@@ -25,7 +25,9 @@ debug = F
 library(plyr)
 library(dplyr)
 computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer=='shocky' || computer=='acer' || computer == 'toshi'){ cloud_dir='C:/gd/' }
+if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
+if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'Users/egora/Dropbox/' }
+# if(computer=='shocky' || computer=='acer' || computer == 'toshi'){ cloud_dir='C:/gd/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 all_data_dir = paste0(cloud_dir, 'Projects/eb/data/eb3/')
 conds = c('cond-a', 'cond-c', 'cond-v')
