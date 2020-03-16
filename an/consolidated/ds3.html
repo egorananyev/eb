@@ -533,15 +533,15 @@ cols_to_include = c(&#39;subj&#39;, &#39;cue_pred&#39;, &#39;cond&#39;, &#39;blo
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt&lt;short_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_short, &#39;short RT&#39;)</code></pre>
-<pre><code>## [1] &quot;short RT 36&quot;</code></pre>
+<pre><code>## [1] &quot;short RT 21&quot;</code></pre>
 <pre class="r"><code># Excluding trials with long RTs:
 excl_long = ds[ds$rt&gt;long_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_long, &#39;long RT&#39;)</code></pre>
-<pre><code>## [1] &quot;long RT 14&quot;</code></pre>
+<pre><code>## [1] &quot;long RT 8&quot;</code></pre>
 <pre class="r"><code># Excluding trials with false responses (analyzed separately from RTs):
 excl_false = ds[ds$corr_resp==0, cols_to_include]
 excl = ds_exclude(excl_false, &#39;incorrect response&#39;)</code></pre>
-<pre><code>## [1] &quot;incorrect response 24&quot;</code></pre>
+<pre><code>## [1] &quot;incorrect response 12&quot;</code></pre>
 <pre class="r"><code># Displaying number of trials to be excluded, based on condition and block
 head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))</code></pre>
 <pre><code>##   subj cue_pred cond        excl_reason num_excl

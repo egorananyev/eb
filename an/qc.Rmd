@@ -22,8 +22,8 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '3'
-subj = 'subj-00'
-cond = 'cond-v'
+subj = 'subj-02'
+cond = 'cond-c'
 cue = 'cp'  # cp/cu = predictive/unpredictive
 block = 1
 debug = F
