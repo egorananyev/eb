@@ -125,16 +125,21 @@ else:
 
 # Handling condition instructions:
 if measure:
-    cond_instr = 'Please blink immediately after you see the black square.'
+    cond_instr = 'Please do the following:\n' \
+                 '- Keep your head still;\n' \
+                 '- Always look directly at the center cross (+);\n' \
+                 '- When you see the BLACK SQUARE, blink once.'
 elif exp_info['cond'] == 'c' or exp_info['cond'] == 'a':
     cond_instr = 'Please do the following:\n' \
-                 '(1) Press ''SPACE'' immediately after you see a black square;\n' \
-                 '(2) DO NOT BLINK during the trial - blink *after* the trial instead;\n' \
-                 '(3) Indicate the location of the target (WHITE DOT) as soon as you see it by pressing LEFT or RIGHT.'
+                 '- Keep your head still and always look directly at the center cross;\n' \
+                 '- DO NOT BLINK during the trial;\n' \
+                 '- When you see the BLACK SQUARE, press ''SPACE'' immediately;\n' \
+                 '- When you see the WHITE DOT, press ''LEFT'' or ''RIGHT'' to indicate its location.'
 else:  # for 'd' or 'v'
     cond_instr = 'Please do the following:\n' \
-                 '(1) Blink immediately after you see a black square;\n' \
-                 '(2) Indicate the location of the target (WHITE DOT) as soon as you see it by pressing LEFT or RIGHT.'
+                 '- Keep your head still and always look directly at the center cross;\n' \
+                 '- When you see the BLACK SQUARE, BLINK ONCE immediately;\n' \
+                 '- When you see the WHITE DOT, press ''LEFT'' or ''RIGHT'' to indicate its location.'
 
 ## Input and output
 
