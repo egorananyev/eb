@@ -53,7 +53,7 @@ for(cur_cue_cond in cue_conds){
       # cur_block = blocks[1]  # temp
       for(cur_block in blocks){
         cur_block_dir = paste(cur_cond_dir, cur_block, sep='/')
-        # print(cur_block_dir)
+        print(cur_block_dir)
         cur_df = read.csv(paste(cur_block_dir, 'beh_out.csv', sep='/'))
         # Making sure 'cue_pred' column exists; if not, writing it in:
         if(!'cue_pred' %in% colnames(cur_df)){

@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'3', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'7', u'cond': u'', u'block': u'', u'soa': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -90,7 +90,7 @@ elif exp_name == 'eb2':
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
 elif exp_name == 'eb3':
     cue_pred = 1
-    trial_n = 6  # trials per condition row; 5 gives 40 trials (per block); 20 ~ 9 min
+    trial_n = 5  # trials per condition row; 5 gives 40 trials (per block); 20 ~ 9 min
     soa = int(exp_info['soa'])
     # with 11 blocks, the above session should last 40-50 min.
 

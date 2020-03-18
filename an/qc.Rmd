@@ -22,21 +22,21 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '3'
-subj = 'subj-02'
-cond = 'cond-c'
+subj = 'subj-07'
+cond = 'cond-v'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 1
+block = 3  # TODO subj-05 block 5 glitched out
 debug = F
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
 computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
-if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'Users/egora/Dropbox/' }
+if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 # if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 library(R.utils)
-sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_qc', sep='/'))
+sourceDirectory(paste0(cloud_dir, 'Projects/eb/eb/an/funs_qc'))
 # Getting the data directory:
 data_dir = get_dir(cloud_dir, eb, cue, subj, cond, block)
 # Reading raw data:
@@ -52,6 +52,8 @@ trials = parse_trials(raw_data, cond)
 samples = lab_samples(samples, trials)
 # Parsing blank events (may be more than one per trial)
 blanks = parse_blanks(raw_data, trials)
+# In case there are no blinks, we need to have a convenient trigger: blink_nada
+# if(nrow(blanks) == 1 & is.na(blanks[1,1])){ blink_nada = TRUE } else { blink_nada = FALSE }
 ```
 
 # Merging blanks & trials
@@ -64,7 +66,6 @@ if(debug){
   trials = trials[trials$trial %in% included_trials,]
   blanks = blanks[blanks$trial %in% included_trials,]
 }
-
 # The merged data frame has trials and blanks combined:
 merged = merge(trials, blanks, by='trial', all=T)
 if(cond != 'cond-m'){
@@ -126,7 +127,7 @@ if(cond == 'cond-c' | cond == 'cond-a'){
 
 # In all experimental (non-measurement) conditions:
 # Excluding trials with 'target blinks' (blinks during target presentation):
-if(cond!='cond-m'){
+if(cond!='cond-m' & !is.null(blanks)){
   excl_targ_blink_trials = merged$blank_time_end > (merged$targ_time -
                                                     merged$trial_time_beg +
                                                     eo_tolerance) &

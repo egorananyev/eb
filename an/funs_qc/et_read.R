@@ -175,51 +175,62 @@ lab_samples = function(samples, trials){
 # Read blank events (may be more than one per trial)
 parse_blanks = function(raw_data, trials){
     # Extracting the lines with blank ends, as they include blank start, end, and duration:
-    blanks = dfy(raw_data[grepl('^EBLINK', raw_data)], c(6,2,3), 1)
-    if(ncol(blanks)==1){
-        blanks = t(blanks)
-        rownames(blanks) = NULL
-    }
-    colnames(blanks) = c('blank_sample_beg', 'blank_sample_end', 'tot_blank_samples')
-    all_blanks = data.frame()
-    # Labeling trials in the 'blanks' data frame
-    for(cur_trial in as.numeric(rownames(trials))){
-        this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
-        this_trial_sample_end = trials$trial_sample_end[cur_trial]
-        if(nrow(blanks)>1){
-            trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
-                                  blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that
-            # ... this implies that the blank must have been initiated on this trial
-        } else {
-            if(nrow(blanks)==1){  # if there's only one blank, see if it matches the trial
-                if(blanks[1] >= this_trial_sample_beg & blanks[2] < this_trial_sample_end){
-                    trial_blanks = blanks
+    eblink_indices = grepl('^EBLINK', raw_data)
+    if(sum(eblink_indices) == 0){  # that would mean *no* blinks -- it's possible!
+        all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
+                                tot_blank_samples = NA, trial = NA,
+                                blank_time_beg = NA, blank_time_end = NA,
+                                tot_blank_time = NA)
+        # all_blanks = NULL
+        print('No blinks detected: returning NA columns.')
+    }else{
+        blanks = dfy(raw_data[eblink_indices], c(6,2,3), 1)
+        if(ncol(blanks)==1){
+            blanks = t(blanks)
+            rownames(blanks) = NULL
+        }
+        colnames(blanks) = c('blank_sample_beg', 'blank_sample_end', 'tot_blank_samples')
+        all_blanks = data.frame()
+        # Labeling trials in the 'blanks' data frame
+        for(cur_trial in as.numeric(rownames(trials))){
+            this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
+            this_trial_sample_end = trials$trial_sample_end[cur_trial]
+            if(nrow(blanks)>1){
+                trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
+                                      blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that
+                # ... this implies that the blank must have been initiated on this trial
+            } else {
+                if(nrow(blanks)==1){  # if there's only one blank, see if it matches the trial
+                    if(blanks[1] >= this_trial_sample_beg & blanks[2] < this_trial_sample_end){
+                        trial_blanks = blanks
+                    } else {
+                        trial_blanks = NULL
+                    }
                 } else {
                     trial_blanks = NULL
                 }
-            } else {
-                trial_blanks = NULL
+            }
+            # The following can only be run if the trial_blanks is non-empty:
+            if(!is.null(trial_blanks)){
+                if(nrow(trial_blanks) > 0){
+                    trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
+                    this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
+                    trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
+                    this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
+                    trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
+                    all_blanks = rbind(all_blanks, trial_blanks)
+                }
             }
         }
-        # The following can only be run if the trial_blanks is non-empty:
-        if(!is.null(trial_blanks)){
-            if(nrow(trial_blanks) > 0){
-                trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
-                this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
-                trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
-                this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
-                trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
-                all_blanks = rbind(all_blanks, trial_blanks)
-            }
+        if(nrow(all_blanks) > 0){
+            all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
+        } else {
+            all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
+                                    tot_blank_samples = NA, trial = NA,
+                                    blank_time_beg = NA, blank_time_end = NA,
+                                    tot_blank_time = NA)
         }
+        print(head(all_blanks))
     }
-    if(nrow(all_blanks) > 0){
-        all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
-    } else {
-        all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
-                                tot_blank_samples = NA, trial = NA,
-                                blank_time_beg = NA, blank_time_end = NA)
-    }
-    print(head(all_blanks))
     return(all_blanks)
 }

@@ -422,7 +422,7 @@ for(cur_cue_cond in cue_conds){
       # cur_block = blocks[1]  # temp
       for(cur_block in blocks){
         cur_block_dir = paste(cur_cond_dir, cur_block, sep=&#39;/&#39;)
-        # print(cur_block_dir)
+        print(cur_block_dir)
         cur_df = read.csv(paste(cur_block_dir, &#39;beh_out.csv&#39;, sep=&#39;/&#39;))
         # Making sure &#39;cue_pred&#39; column exists; if not, writing it in:
         if(!&#39;cue_pred&#39; %in% colnames(cur_df)){
@@ -472,8 +472,97 @@ for(cur_cue_cond in cue_conds){
       }
     }
   }
-}
-colnames(df)[6] = &#39;trial&#39;  # renaming the &#39;trial_id&#39; column to &#39;trial&#39;
+}</code></pre>
+<pre><code>## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-00/cond-a/block-1_2020-03-06_1432&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-00/cond-c/block-1_2020-03-06_1320&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-00/cond-c/block-2_2020-03-06_1350&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-00/cond-v/block-1_2020-03-06_1340&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-a/block-1_2020-03-12_1143&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-a/block-2_2020-03-12_1150&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-a/block-3_2020-03-12_1154&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-1_2020-03-12_1159&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-2_2020-03-12_1203&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-3_2020-03-12_1208&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-4_2020-03-12_1211&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-5_2020-03-12_1215&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-c/block-6_2020-03-12_1218&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-v/block-1_2020-03-12_1122&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-v/block-2_2020-03-12_1127&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-01/cond-v/block-3_2020-03-12_1134&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-a/block-1_2020-03-12_1550&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-a/block-2_2020-03-12_1555&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-a/block-3_2020-03-12_1600&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-1_2020-03-12_1455&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-2_2020-03-12_1503&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-3_2020-03-12_1508&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-4_2020-03-12_1513&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-5_2020-03-12_1518&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-c/block-6_2020-03-12_1522&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-v/block-1_2020-03-12_1529&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-v/block-2_2020-03-12_1534&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-02/cond-v/block-3_2020-03-12_1540&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-a/block-1_2020-03-12_1722&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-a/block-2_2020-03-12_1728&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-a/block-3_2020-03-12_1733&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-1_2020-03-12_1643&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-2_2020-03-12_1652&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-3_2020-03-12_1656&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-4_2020-03-12_1700&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-5_2020-03-12_1704&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-c/block-6_2020-03-12_1712&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-v/block-1_2020-03-12_1736&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-v/block-2_2020-03-12_1741&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-03/cond-v/block-3_2020-03-12_1744&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-a/block-1_2020-03-17_1227&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-a/block-2_2020-03-17_1230&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-a/block-3_2020-03-17_1233&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-1_2020-03-17_1149&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-2_2020-03-17_1203&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-3_2020-03-17_1207&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-4_2020-03-17_1211&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-5_2020-03-17_1214&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-c/block-6_2020-03-17_1217&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-v/block-1_2020-03-17_1138&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-v/block-2_2020-03-17_1142&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-04/cond-v/block-3_2020-03-17_1145&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-a/block-1_2020-03-17_1241&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-a/block-2_2020-03-17_1248&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-a/block-3_2020-03-17_1251&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-a/block-4_2020-03-17_1254&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-1_2020-03-17_1257&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-2_2020-03-17_1300&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-3_2020-03-17_1302&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-4_2020-03-17_1305&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-5_2020-03-17_1308&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-c/block-6_2020-03-17_1310&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-v/block-1_2020-03-17_1313&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-v/block-2_2020-03-17_1316&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-05/cond-v/block-3_2020-03-17_1319&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-a/block-1_2020-03-17_1331&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-a/block-2_2020-03-17_1336&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-a/block-3_2020-03-17_1339&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-1_2020-03-17_1356&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-2_2020-03-17_1400&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-3_2020-03-17_1403&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-4_2020-03-17_1406&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-5_2020-03-17_1408&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-c/block-6_2020-03-17_1410&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-v/block-1_2020-03-17_1347&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-v/block-2_2020-03-17_1350&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-06/cond-v/block-3_2020-03-17_1353&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-a/block-1_2020-03-17_1425&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-a/block-2_2020-03-17_1430&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-a/block-3_2020-03-17_1433&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-1_2020-03-17_1436&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-2_2020-03-17_1440&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-3_2020-03-17_1443&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-4_2020-03-17_1447&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-5_2020-03-17_1450&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-c/block-6_2020-03-17_1453&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-v/block-1_2020-03-17_1458&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-v/block-2_2020-03-17_1501&quot;
+## [1] &quot;/Users/Egor/Dropbox/Projects/eb/data/eb3/cp/subj-07/cond-v/block-3_2020-03-17_1505&quot;</code></pre>
+<pre class="r"><code>colnames(df)[6] = &#39;trial&#39;  # renaming the &#39;trial_id&#39; column to &#39;trial&#39;
 head(df)</code></pre>
 <pre><code>##   exp_name cue_pred subj cond block trial cue_delay targ_right cue_valid targ_soa shutter_dur
 ## 1      eb3        1    0    a     1     1     0.385          0         0      0.6  0.09968864
@@ -527,15 +616,15 @@ cols_to_include = c(&#39;subj&#39;, &#39;cue_pred&#39;, &#39;cond&#39;, &#39;blo
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt&lt;short_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_short, &#39;short RT&#39;)</code></pre>
-<pre><code>## [1] &quot;short RT 36&quot;</code></pre>
+<pre><code>## [1] &quot;short RT 108&quot;</code></pre>
 <pre class="r"><code># Excluding trials with long RTs:
 excl_long = ds[ds$rt&gt;long_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_long, &#39;long RT&#39;)</code></pre>
-<pre><code>## [1] &quot;long RT 14&quot;</code></pre>
+<pre><code>## [1] &quot;long RT 32&quot;</code></pre>
 <pre class="r"><code># Excluding trials with false responses (analyzed separately from RTs):
 excl_false = ds[ds$corr_resp==0, cols_to_include]
 excl = ds_exclude(excl_false, &#39;incorrect response&#39;)</code></pre>
-<pre><code>## [1] &quot;incorrect response 24&quot;</code></pre>
+<pre><code>## [1] &quot;incorrect response 80&quot;</code></pre>
 <pre class="r"><code># Displaying number of trials to be excluded, based on condition and block
 head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))</code></pre>
 <pre><code>##   subj cue_pred cond        excl_reason num_excl
