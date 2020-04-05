@@ -174,14 +174,16 @@ lab_samples = function(samples, trials){
 
 # Read blank events (may be more than one per trial)
 parse_blanks = function(raw_data, trials){
+    ## This identifies the blanks and puts them into a data frame along with start/end/duration,
+    ## as well as whether the blank (blink) occurred post-cue and post-target.
     # Extracting the lines with blank ends, as they include blank start, end, and duration:
     eblink_indices = grepl('^EBLINK', raw_data)
-    if(sum(eblink_indices) == 0){  # that would mean *no* blinks -- it's possible!
+    if(sum(eblink_indices) == 0){  # That would mean *no* blinks -- it's possible!
         all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
                                 tot_blank_samples = NA, trial = NA,
-                                blank_time_beg = NA, blank_time_end = NA,
-                                tot_blank_time = NA)
-        # all_blanks = NULL
+                                blank_time_beg = NA, blank_time_end = NA, tot_blank_time = NA,
+                                blank_post_cue = NA, blank_post_targ = NA)
+        # all_blanks = NULL  # This doesn't work, as append fails for NULL vars
         print('No blinks detected: returning NA columns.')
     }else{
         blanks = dfy(raw_data[eblink_indices], c(6,2,3), 1)
@@ -196,8 +198,8 @@ parse_blanks = function(raw_data, trials){
             this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
             this_trial_sample_end = trials$trial_sample_end[cur_trial]
             if(nrow(blanks)>1){
-                trial_blanks = blanks[blanks$blank_sample_beg>=this_trial_sample_beg &
-                                      blanks$blank_sample_beg< this_trial_sample_end,]  # ... note that
+                trial_blanks = blanks[blanks$blank_sample_beg >= this_trial_sample_beg &
+                                      blanks$blank_sample_beg < this_trial_sample_end, ]
                 # ... this implies that the blank must have been initiated on this trial
             } else {
                 if(nrow(blanks)==1){  # if there's only one blank, see if it matches the trial
@@ -213,24 +215,141 @@ parse_blanks = function(raw_data, trials){
             # The following can only be run if the trial_blanks is non-empty:
             if(!is.null(trial_blanks)){
                 if(nrow(trial_blanks) > 0){
-                    trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
-                    this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) *  0.001
-                    trial_blanks = data.frame(trial_blanks, data.frame(blank_time_beg = this_blank_time_beg))
-                    this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
-                    trial_blanks = data.frame(trial_blanks, data.frame(blank_time_end = this_blank_time_end))
+                    # trial_blanks = data.frame(trial_blanks, data.frame(trial = cur_trial))
+                    trial_blanks$trial = cur_trial
+                    # this_blank_time_beg = (trial_blanks$blank_sample_beg - this_trial_sample_beg) * 0.001
+                    # trial_blanks = data.frame(trial_blanks,
+                    #                           data.frame(blank_time_beg = this_blank_time_beg))
+                    trial_blanks$blank_time_beg = 0.001 *
+                        (trial_blanks$blank_sample_beg - this_trial_sample_beg)
+                    # this_blank_time_end = (trial_blanks$blank_sample_end - this_trial_sample_beg) * 0.001
+                    # trial_blanks = data.frame(trial_blanks,
+                    #                           data.frame(blank_time_end = this_blank_time_end))
+                    trial_blanks$blank_time_end = 0.001 *
+                        (trial_blanks$blank_sample_end - this_trial_sample_beg)
+                    # To see whether a given blank occurred post-cue and post-targ,
+                    # ...taking the trial info from the <trials> df:
+                    this_trial = trials[trials$trial==cur_trial, ]
+                    trial_blanks$tot_blank_time = with(trial_blanks,
+                                                       blank_time_end - blank_time_beg)
+                    trial_blanks$blank_post_cue = as.numeric(trial_blanks$blank_sample_beg >
+                                                       this_trial$cue_sample)
+                    trial_blanks$blank_post_targ = as.numeric(trial_blanks$blank_sample_beg >
+                                                        this_trial$targ_sample)
                     all_blanks = rbind(all_blanks, trial_blanks)
                 }
             }
         }
-        if(nrow(all_blanks) > 0){
-            all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
-        } else {
-            all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
-                                    tot_blank_samples = NA, trial = NA,
-                                    blank_time_beg = NA, blank_time_end = NA,
-                                    tot_blank_time = NA)
-        }
+        # if(nrow(all_blanks) > 0){
+        #     all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
+        # } else {
+        #     all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
+        #                             tot_blank_samples = NA, trial = NA,
+        #                             blank_time_beg = NA, blank_time_end = NA,
+        #                             tot_blank_time = NA)
+        # }
         print(head(all_blanks))
     }
     return(all_blanks)
+}
+
+# Read saccade events (may be more than one per trial) based on saccadic threshold:
+label_sacc_samples = function(samples, blanks, trials, sacc_thresh=2, eb_buff=50){
+    ### sacc_thresh = threshold for the HEM to exceed to count as saccade, in DOVA
+    ### eb_buff = buffer time around an eye blink where saccades are ignored; in samples / ms
+    
+    # The only output from this is a modified <samples> variable, which contains the eye-tracking
+    # data. The only new thing this function adds is the $sacc column that has a zero for
+    # no saccade and one for saccadic sample.
+    
+    # First, setting the samples$sacc to all zeros:
+    samples$sacc = 0
+    
+    # The following variable collects all samples labeled as saccades through the below loops:
+    all_sacc_samples = NULL
+    
+    # cur_trial = 63  #TEMP
+    for(cur_trial in trials$trial){
+        # all horizontal eye-tracking data for this trial:
+        trial_etx = samples[samples$trial==cur_trial,]
+        # further limiting to eye-tracking samples after cue and before response:
+        trial_etx = trial_etx[trial_etx$sample > trials$cue_sample[trials$trial==cur_trial],]
+        trial_etx = trial_etx[trial_etx$sample < trials$resp_sample[trials$trial==cur_trial],]
+        
+        # Looping through blanks (if any) to label samples to examine -- only non-eye blink samples
+        # (+/- a buffer zone, <buff_ms>) will be further examined:
+        if(!cur_trial %in% blanks$trial){  # if there are no blanks for this trial,
+            trial_noneb_etx = trial_etx  # then all samples will be examined
+        } else {  # if there are any blanks for this trial,
+            # Blanks for this trial:
+            trial_blanks = blanks[blanks$trial==cur_trial,]
+            # Since the following loops goes through however many blanks there are for this trial,
+            # it is necessary to filter the same data set that many times:
+            trial_noneb_etx = trial_etx
+            for(cur_blank in nrow(trial_blanks)){
+                this_trial_blank = trial_blanks[cur_blank,]
+                pre_eb_inc = which(trial_noneb_etx$sample <
+                                       (this_trial_blank$blank_sample_beg[cur_blank] - eb_buff))
+                pst_eb_inc = which(trial_noneb_etx$sample >
+                                       (this_trial_blank$blank_sample_end[cur_blank] + eb_buff + 15))
+                trial_noneb_etx = trial_noneb_etx[c(pre_eb_inc, pst_eb_inc),]
+            }
+        }
+        
+        # Recording the samples where the ET data exceed the saccadic threshold:
+        trial_sacc_samples = trial_noneb_etx$sample[abs(trial_noneb_etx$xr) > sacc_thresh]
+        
+        # Appending the above to the saccade-collecting variable:
+        all_sacc_samples = c(all_sacc_samples, trial_sacc_samples)
+    }
+    
+    # Labeling the corresponding samples based on the above saccadic search:
+    samples$sacc[samples$sample %in% all_sacc_samples] = 1
+    
+    return(samples)
+}
+
+# Measuring saccades for every trial.
+# <sacc> = one saccade per row.
+quant_sacc = function(samples, trials){
+    # The following df is reduced in size every time a saccade is found for saccade search:
+    subsamples = samples
+    rownames(subsamples) <- NULL
+    sacc = data.frame()
+    
+    # making sure there are any saccades in <samples>:
+    perform_sacc_search = sum(samples$sacc==1) > 0  # TRUE or FALSE
+    
+    while(perform_sacc_search){
+        # The row index of the beginning of the saccade:
+        sacc_beg_ix = min(which(subsamples$sacc == 1))
+        # The duration of the saccade, in number of rows (overshoots by 1):
+        sacc_dur_rows = min(which(subsamples$sacc[sacc_beg_ix:nrow(subsamples)] == 0)) - 1
+        # The row index of the end of the saccade:
+        sacc_end_ix = sacc_beg_ix + sacc_dur_rows - 1
+        
+        this_sacc = data.frame(trial=NA,
+                               sacc_beg_sample=NA, sacc_end_sample=NA, sacc_tot_sample=NA,
+                               sacc_beg_time=NA, sacc_end_time=NA, sacc_tot_time=NA,
+                               sacc_dir_R=NA, bef_targ=NA)
+        this_trial = subsamples$trial[sacc_beg_ix]
+        this_sacc$trial = this_trial
+        # Recording the beginning, end, and duration of the saccade:
+        this_sacc$sacc_beg_sample = subsamples$sample[sacc_beg_ix]
+        this_sacc$sacc_end_sample = subsamples$sample[sacc_end_ix]
+        this_sacc$sacc_tot_sample = with(this_sacc, sacc_end_sample - sacc_beg_sample)
+        this_sacc$sacc_beg_time = subsamples$time[sacc_beg_ix]
+        this_sacc$sacc_end_time = subsamples$time[sacc_end_ix]
+        this_sacc$sacc_tot_time = with(this_sacc, sacc_end_time - sacc_beg_time)
+        # A binary variable for whether the saccade is left (zero) or right (one):
+        this_sacc$sacc_dir_R = as.numeric(subsamples$xr[sacc_beg_ix] > 0)
+        # Classifying the saccade as occuring before or before target onset:
+        this_sacc$bef_targ = as.numeric(this_sacc$sacc_beg_sample < 
+                                            trials$targ_sample[trials$trial==this_trial])
+        sacc = rbind(sacc, this_sacc)
+        subsamples = subsamples[(sacc_end_ix+1):nrow(subsamples),]
+        perform_sacc_search = sum(subsamples$sacc==1) > 0  # TRUE or FALSE
+    }
+    
+    return(sacc)
 }

@@ -1,49 +1,63 @@
 
 # Visualize the data:
 library(ggplot2)
-plot_qc = function(samples, trials){
+plot_qc = function(trial_samples, trial_blanks, this_trial, trial_sacc){
     ylims = c(-10, 10)
-    p = ggplot(samples[samples$trial==cur_trial,], aes(x=time))
+    p = ggplot(trial_samples, aes(x=time))
     p = p + geom_line(aes(y=xr, colour='Gaze'))
     # p = p + geom_line(aes(y=yr-432, colour='Gaze'), linetype='longdash')
     p = p + geom_line(aes(y=((psr-mean(psr))/100), colour='Pupil'))  # colour='Pupil'))
     p = p + scale_y_continuous(sec.axis = sec_axis(~.*5, name='Pupil Diameter (a.u.)'),limits=ylims)
     # p = p + xlim(xlims)
     p = p + scale_colour_manual(values=c('blue', 'chocolate'))
-    # number of blanks in this trial:
-    numof_blanks = sum(blanks$trial==cur_trial)
-    if(!is.na(numof_blanks)){
-        if(numof_blanks >= 1){
-            cur_blanks = blanks[blanks$trial==cur_trial,]
-            for(cur_blank in 1:numof_blanks){
-                p = p + geom_rect(data=cur_blanks[cur_blank,], inherit.aes=F, 
-                                  aes(xmin=blank_time_beg, xmax=blank_time_end, 
-                                      ymin=ylims[1], ymax=ylims[2]),
-                                  color='transparent', fill='black', alpha=.3)
-            }
+    
+    # Marking blanks:
+    numof_blanks = nrow(trial_blanks)  # number of blanks in this trial:
+    if(!is.na(numof_blanks) & numof_blanks >= 1){
+        for(cur_blank in 1:numof_blanks){
+            this_blank_df = trial_blanks[cur_blank, ]
+            this_alpha = .35
+            if(!this_blank_df$blank_post_cue){this_alpha = .65}
+            if(this_blank_df$blank_post_targ){this_alpha = .25}
+            p = p + geom_rect(data=this_blank_df, inherit.aes=F, 
+                              aes(xmin=blank_time_beg, xmax=blank_time_end, 
+                                  ymin=ylims[1], ymax=ylims[2]),
+                              color='transparent', fill='black', alpha=this_alpha)
+        }
+    }
+    # Marking saccades:
+    numof_sacc = nrow(trial_sacc)
+    if(!is.na(numof_sacc) & numof_sacc>=1){
+        for(cur_sacc in 1:numof_sacc){
+            this_sacc_df = trial_sacc[cur_sacc,]
+            if(this_sacc_df$bef_targ){this_alpha=.35} else {this_alpha=.15}
+            p = p + geom_rect(data=this_sacc_df, inherit.aes=F, 
+                              aes(xmin=sacc_beg_time, xmax=sacc_end_time, 
+                                  ymin=ylims[1], ymax=ylims[2]),
+                              color='transparent', fill='blue', alpha=this_alpha)
         }
     }
     # Marking the cue:
-    p = p + geom_rect(data=trials[as.character(cur_trial),], inherit.aes=F, 
+    p = p + geom_rect(data=this_trial, inherit.aes=F, 
                       aes(xmin=cue_time-trial_time_beg, xmax=cue_time+.1-trial_time_beg, 
                           ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='orange', alpha=.3)
-    # Marking the shutter on/off times [2019-06-28] and space presses:
+    # Marking the shutter on/off times:
     if(cond == 'cond-a'){
-        p = p + geom_rect(data=trials[as.character(cur_trial),], inherit.aes=F,
+        p = p + geom_rect(data=this_trial, inherit.aes=F,
                           aes(xmin=shutter_time_beg-trial_time_beg,
                               xmax=shutter_time_end-trial_time_beg, ymin=ylims[1], ymax=ylims[2]),
                           color='transparent', fill='green', alpha=.3)
-        p = p + geom_vline(data=trials[as.character(cur_trial),], 
-                           aes(xintercept=cue_resp_time-trial_time_beg), linetype='dotted')
+    }
+    # [2019-06-28] and space presses [2020-03-30] for both no-blink and AB conditions:
+    if(cond %in% c('cond-a', 'cond-c')){
+        p = p + geom_vline(data=this_trial, aes(xintercept=cue_resp_time-trial_time_beg), linetype='dotted')
     }
     # Indicating the start of key monitoring & trial end times (optional/for debug):
-    p = p + geom_vline(data=trials[as.character(cur_trial),], 
-                       aes(xintercept=targ_time-trial_time_beg), linetype='longdash')
+    p = p + geom_vline(data=this_trial, aes(xintercept=targ_time-trial_time_beg), linetype='longdash')
     # Marking the response time to the cue in the experimental conditions:
     if(cond != 'cond-m'){
-        p = p + geom_vline(data=trials[as.character(cur_trial),], 
-                           aes(xintercept=resp_time-trial_time_beg))
+        p = p + geom_vline(data=this_trial, aes(xintercept=resp_time-trial_time_beg))
         p = p + geom_hline(aes(yintercept=-8), color='grey')
         p = p + geom_hline(aes(yintercept=8), color='grey')
     }

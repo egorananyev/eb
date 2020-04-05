@@ -70,7 +70,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'7', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'24', u'cond': u'', u'block': u'', u'soa': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box

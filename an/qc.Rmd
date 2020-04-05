@@ -22,20 +22,21 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '3'
-subj = 'subj-07'
+subj = 'subj-01'
 cond = 'cond-v'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 3  # TODO subj-05 block 5 glitched out
+block = 2
 debug = F
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
 if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 # if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 library(R.utils)
+library(plyr)
 sourceDirectory(paste0(cloud_dir, 'Projects/eb/eb/an/funs_qc'))
 # Getting the data directory:
 data_dir = get_dir(cloud_dir, eb, cue, subj, cond, block)
@@ -52,6 +53,30 @@ trials = parse_trials(raw_data, cond)
 samples = lab_samples(samples, trials)
 # Parsing blank events (may be more than one per trial)
 blanks = parse_blanks(raw_data, trials)
+# Labeling samples with saccades:
+samples = label_sacc_samples(samples, blanks, trials, sacc_thresh=2, eb_buff=50)
+# Quantifying saccades for every trial:
+sacc = quant_sacc(samples, trials)
+# For debugging, picking a select few trials:
+if(debug){
+  included_trials = c(37, 63, 64)
+  samples = samples[samples$trial %in% included_trials,]
+  trials = trials[trials$trial %in% included_trials,]
+  blanks = blanks[blanks$trial %in% included_trials,]
+  sacc = sacc[sacc$trial %in% included_trials,]
+}
+# Label trials with saccades:
+sacc_sum = ddply(sacc, .(trial), summarise,
+                 sacc_num = length(trial),
+                 sacc_R = sum(sacc_dir_R),
+                 sacc_bef_targ = sum(bef_targ))
+if(nrow(sacc_sum) > 0){
+  trials = merge(trials, sacc_sum, by='trial', all=T)
+} else {  # if there are no trials with saccades, assigning NA values to saccade columns
+  trials$sacc_num = NA
+  trials$sacc_R = NA
+  trials$sacc_bef_targ = NA
+}
 # In case there are no blinks, we need to have a convenient trigger: blink_nada
 # if(nrow(blanks) == 1 & is.na(blanks[1,1])){ blink_nada = TRUE } else { blink_nada = FALSE }
 ```
@@ -59,13 +84,6 @@ blanks = parse_blanks(raw_data, trials)
 # Merging blanks & trials
 ```{r}
 ## TEMP:
-# For debugging, picking a select few trials:
-if(debug){
-  included_trials = c(1, 2, 3)
-  samples = samples[samples$trial %in% included_trials,]
-  trials = trials[trials$trial %in% included_trials,]
-  blanks = blanks[blanks$trial %in% included_trials,]
-}
 # The merged data frame has trials and blanks combined:
 merged = merge(trials, blanks, by='trial', all=T)
 if(cond != 'cond-m'){
@@ -145,6 +163,16 @@ if(cond!='cond-m' & !is.null(blanks)){
 } else {
   excl_targ_blink = NULL
 }
+
+# In all conditions (including measurement):
+# Excluding trials with pre-target saccades:
+if(sum(trials$sacc_bef_targ, na.rm = T)){
+  excl_sacc_trials = data.frame(trial=trials$trial[trials$sacc_bef_targ == 1 &
+                                                   !is.na(trials$sacc_bef_targ)],
+                                excl_reason = 'saccade')
+} else {
+  excl_sacc_trials = NULL
+}
 ```
 
 # Manual trial excl/inclusions
@@ -175,7 +203,7 @@ if(!is.null(manual)){
 # Output
 ```{r}
 # Printing all exclusions (if any) to screen and exporting:
-all_excl = rbind(excl_targ_blink, excl_prohib_blink, excl_no_blink)
+all_excl = rbind(excl_targ_blink, excl_prohib_blink, excl_no_blink, excl_sacc_trials)
 # Also attaching manual exclusions, if any:
 if(!is.null(excl_manual)){
   all_excl = rbind(all_excl, excl_manual)
@@ -215,9 +243,12 @@ if(!debug){
 sub_samples = samples[c(T,F,F,F,F,F,F,F,F,F),]
 # Cycling through trials to visualize
 # cur_trial = 1  #temp
-for(cur_trial in as.numeric(rownames(trials))){
+for(cur_trial in trials$trial){
   # start.time <- Sys.time() 
-  plot_qc(sub_samples, trials)
+  plot_qc(trial_samples = sub_samples[sub_samples$trial==cur_trial,],
+          trial_blanks = blanks[blanks$trial==cur_trial,],
+          this_trial = trials[trials$trial==cur_trial,],
+          trial_sacc = sacc[sacc$trial==cur_trial,])
   # end.time <- Sys.time()
   # (time.taken <- end.time - start.time)
 }
