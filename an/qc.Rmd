@@ -22,11 +22,12 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '3'
-subj = 'subj-01'
+subj = 'subj-02'
 cond = 'cond-v'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 2
+block = 1
 debug = F
+included_trials = c(2)
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
@@ -59,13 +60,15 @@ samples = label_sacc_samples(samples, blanks, trials, sacc_thresh=2, eb_buff=50)
 sacc = quant_sacc(samples, trials)
 # For debugging, picking a select few trials:
 if(debug){
-  included_trials = c(37, 63, 64)
   samples = samples[samples$trial %in% included_trials,]
   trials = trials[trials$trial %in% included_trials,]
   blanks = blanks[blanks$trial %in% included_trials,]
   sacc = sacc[sacc$trial %in% included_trials,]
 }
-# Label trials with saccades:
+```
+
+```{r}
+# Including saccade summary in <trials>:
 sacc_sum = ddply(sacc, .(trial), summarise,
                  sacc_num = length(trial),
                  sacc_R = sum(sacc_dir_R),
@@ -77,15 +80,22 @@ if(nrow(sacc_sum) > 0){
   trials$sacc_R = NA
   trials$sacc_bef_targ = NA
 }
-# In case there are no blinks, we need to have a convenient trigger: blink_nada
-# if(nrow(blanks) == 1 & is.na(blanks[1,1])){ blink_nada = TRUE } else { blink_nada = FALSE }
+# Including hori eye mvmt summary in <trials>:
+xr_sum = ddply(samples, .(trial), summarise,
+               xr_pre_cue_ave = mean(pre_cue, na.rm = T),
+               xr_pre_eb_ave = mean(pre_eb, na.rm = T),
+               xr_post_eb_ave = mean(post_eb, na.rm = T),
+               xr_pre_targ_ave = mean(pre_targ, na.rm = T),
+               xr_post_targ_ave = mean(post_targ, na.rm = T),
+               xr_post_resp_ave = mean(post_resp, na.rm = T) )
+trials = merge(trials, xr_sum, by='trial', all=T)
 ```
 
 # Merging blanks & trials
 ```{r}
 ## TEMP:
 # The merged data frame has trials and blanks combined:
-merged = merge(trials, blanks, by='trial', all=T)
+merged = merge(trials, blanks, by='trial', all.x=T)
 if(cond != 'cond-m'){
     # Reaction time is the response time stamp minus trial start time stamp:
     merged$rt = with(merged, resp_time - trial_time_beg)
@@ -143,6 +153,18 @@ if(cond == 'cond-c' | cond == 'cond-a'){
     excl_prohib_blink = NULL
 }
 
+# Excluding trials with no space bar press in no-blink and AB conditions:
+if(cond == 'cond-c' | cond == 'cond-a'){
+  if(sum(is.na(trials$cue_resp_time))){
+    excl_nospace = data.frame(trial=trials$trial[is.na(trials$cue_resp_time)],
+                                     excl_reason = 'no space press')
+  } else {
+    excl_nospace = NULL
+  }
+} else {
+  excl_nospace = NULL
+}
+
 # In all experimental (non-measurement) conditions:
 # Excluding trials with 'target blinks' (blinks during target presentation):
 if(cond!='cond-m' & !is.null(blanks)){
@@ -164,14 +186,23 @@ if(cond!='cond-m' & !is.null(blanks)){
   excl_targ_blink = NULL
 }
 
+# In all experimental conditions (non-measurement):
+# Excluding trials with pre-cue blinks:
+if(sum(blanks$blank_post_cue==0, na.rm = T) > 0){
+  excl_precue_blink = data.frame(trial = blanks$trial[blanks$blank_post_cue == 0],
+                                 excl_reason = 'pre-cue blink')
+} else {
+  excl_precue_blink = NULL
+}
+
 # In all conditions (including measurement):
 # Excluding trials with pre-target saccades:
 if(sum(trials$sacc_bef_targ, na.rm = T)){
-  excl_sacc_trials = data.frame(trial=trials$trial[trials$sacc_bef_targ == 1 &
+  excl_sacc = data.frame(trial=trials$trial[trials$sacc_bef_targ > 0 &
                                                    !is.na(trials$sacc_bef_targ)],
-                                excl_reason = 'saccade')
+                         excl_reason = 'saccade')
 } else {
-  excl_sacc_trials = NULL
+  excl_sacc = NULL
 }
 ```
 
@@ -203,7 +234,8 @@ if(!is.null(manual)){
 # Output
 ```{r}
 # Printing all exclusions (if any) to screen and exporting:
-all_excl = rbind(excl_targ_blink, excl_prohib_blink, excl_no_blink, excl_sacc_trials)
+all_excl = rbind(excl_targ_blink, excl_prohib_blink, excl_no_blink, excl_precue_blink,
+                 excl_sacc, excl_nospace)
 # Also attaching manual exclusions, if any:
 if(!is.null(excl_manual)){
   all_excl = rbind(all_excl, excl_manual)
@@ -242,7 +274,7 @@ if(!debug){
 # Taking every third row (sufficient sampling for visualization):
 sub_samples = samples[c(T,F,F,F,F,F,F,F,F,F),]
 # Cycling through trials to visualize
-# cur_trial = 1  #temp
+# cur_trial = 39  #temp
 for(cur_trial in trials$trial){
   # start.time <- Sys.time() 
   plot_qc(trial_samples = sub_samples[sub_samples$trial==cur_trial,],

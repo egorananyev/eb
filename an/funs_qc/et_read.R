@@ -254,7 +254,8 @@ parse_blanks = function(raw_data, trials){
 }
 
 # Read saccade events (may be more than one per trial) based on saccadic threshold:
-label_sacc_samples = function(samples, blanks, trials, sacc_thresh=2, eb_buff=50){
+label_sacc_samples = function(samples, blanks, trials, sacc_thresh = 2, eb_buff = 50, 
+                              pre_cue_samples = 200){
     ### sacc_thresh = threshold for the HEM to exceed to count as saccade, in DOVA
     ### eb_buff = buffer time around an eye blink where saccades are ignored; in samples / ms
     
@@ -264,15 +265,38 @@ label_sacc_samples = function(samples, blanks, trials, sacc_thresh=2, eb_buff=50
     
     # First, setting the samples$sacc to all zeros:
     samples$sacc = 0
+    # Also adding columns that will mark which trial phase the samples belong to:
+    samples$pre_cue = NA  # recording hori eye post for pre_cue_samples prior to the cue
+    samples$pre_eb = NA
+    samples$post_eb = NA
+    samples$pre_targ = NA  # this includes both pre_eb and post_eb in blink conditions
+    samples$post_targ = NA
+    samples$post_resp = NA
     
     # The following variable collects all samples labeled as saccades through the below loops:
     all_sacc_samples = NULL
     
-    # cur_trial = 63  #TEMP
+    # cur_trial = 2  #TEMP
     for(cur_trial in trials$trial){
-        # all horizontal eye-tracking data for this trial:
+        # Taking the trial row from the <trials> df:
+        this_trial = trials[trials$trial==cur_trial,]
+        # All horizontal eye-tracking data for this trial:
         trial_etx = samples[samples$trial==cur_trial,]
-        # further limiting to eye-tracking samples after cue and before response:
+        # Locating <pre_cue_samples> pre-cue samples:
+        pre_cue_sam = trial_etx$sample[trial_etx$sample < this_trial$cue_sample &
+                                       trial_etx$sample > (this_trial$cue_sample - pre_cue_samples)]
+        pre_cue_ix = samples$sample %in% pre_cue_sam
+        samples$pre_cue[pre_cue_ix] = samples$xr[pre_cue_ix]
+        # Locating post-target (pre-response) samples:
+        post_targ_sam = trial_etx$sample[trial_etx$sample > this_trial$targ_sample &
+                                         trial_etx$sample < this_trial$resp_sample]
+        post_targ_ix = samples$sample %in% post_targ_sam
+        samples$post_targ[post_targ_ix] = samples$xr[post_targ_ix]
+        # Locating post-response samples:
+        post_resp_sam = trial_etx$sample[trial_etx$sample > this_trial$resp_sample]
+        post_resp_ix = samples$sample %in% post_resp_sam
+        samples$post_resp[post_resp_ix] = samples$xr[post_resp_ix]
+        # For saccade search, limiting to eye-tracking samples after cue and before response:
         trial_etx = trial_etx[trial_etx$sample > trials$cue_sample[trials$trial==cur_trial],]
         trial_etx = trial_etx[trial_etx$sample < trials$resp_sample[trials$trial==cur_trial],]
         
@@ -286,13 +310,41 @@ label_sacc_samples = function(samples, blanks, trials, sacc_thresh=2, eb_buff=50
             # Since the following loops goes through however many blanks there are for this trial,
             # it is necessary to filter the same data set that many times:
             trial_noneb_etx = trial_etx
+            pre_targ_eb_found = FALSE
             for(cur_blank in nrow(trial_blanks)){
-                this_trial_blank = trial_blanks[cur_blank,]
+                this_blank = trial_blanks[cur_blank,]
                 pre_eb_inc = which(trial_noneb_etx$sample <
-                                       (this_trial_blank$blank_sample_beg[cur_blank] - eb_buff))
-                pst_eb_inc = which(trial_noneb_etx$sample >
-                                       (this_trial_blank$blank_sample_end[cur_blank] + eb_buff + 15))
-                trial_noneb_etx = trial_noneb_etx[c(pre_eb_inc, pst_eb_inc),]
+                                       (this_blank$blank_sample_beg - eb_buff))
+                post_eb_inc = which(trial_noneb_etx$sample >
+                                       (this_blank$blank_sample_end + eb_buff + 25))
+                # If the blink happened before target appearance, recording the samples correspond-
+                # ing to pre/post eb periods. It's only meaningful to do this once per trial, as
+                # only one blink is allowed between cue and target (& only for some conds).
+                if(!pre_targ_eb_found &
+                   this_blank$blank_sample_beg > this_trial$cue_sample &
+                   this_blank$blank_sample_end < this_trial$targ_sample) {
+                    pre_eb_ix = samples$sample %in% trial_noneb_etx$sample[pre_eb_inc]
+                    samples$pre_eb[pre_eb_ix] = samples$xr[pre_eb_ix]
+                    post_eb_ix = samples$sample %in% trial_noneb_etx$sample[post_eb_inc]
+                    samples$post_eb[post_eb_ix] = samples$xr[post_eb_ix]
+                    # To label the pre-target samples, we still exclude eye blink samples:
+                    samples$pre_targ[pre_eb_ix] = samples$xr[pre_eb_ix]
+                    samples$pre_targ[post_eb_ix] = samples$xr[post_eb_ix]
+                    # NA'ing the samples after the target appearance for $pre_targ:
+                    samples$pre_targ[samples$sample >= this_trial$targ_sample] = NA
+                    pre_targ_eb_found = TRUE
+                }
+                # Filtering the eye tracking data so that they only include pre/post-blank periods;
+                # this is repeated for every blink:
+                trial_noneb_etx = trial_noneb_etx[c(pre_eb_inc, post_eb_inc),]
+            }
+            # If there was no eye blink between cue and target, labeling the entire period as
+            # pre-target:
+            if(!pre_targ_eb_found){
+                pre_targ_sam = trial_etx$sample[trial_etx$sample > this_trial$cue_sample &
+                                                trial_etx$sample < this_trial$targ_sample]
+                pre_targ_ix = samples$sample %in% pre_targ_sam
+                samples$pre_targ[pre_targ_ix] = samples$xr[pre_targ_ix]
             }
         }
         
@@ -317,7 +369,7 @@ quant_sacc = function(samples, trials){
     rownames(subsamples) <- NULL
     sacc = data.frame()
     
-    # making sure there are any saccades in <samples>:
+    # Making sure there are saccades in <samples>:
     perform_sacc_search = sum(samples$sacc==1) > 0  # TRUE or FALSE
     
     while(perform_sacc_search){
