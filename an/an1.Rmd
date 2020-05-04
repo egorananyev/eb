@@ -1,9 +1,13 @@
 ---
-title: "[eb1] Analyses"
+title: '[eb1] Analyses'
 author: "Egor Ananyev"
-date: "2019-01-04"
+date: '2019-01-04'
 output:
-  html_notebook: 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
     html_document:
       number_sections: yes
       toc: yes
@@ -13,8 +17,8 @@ output:
     toc: yes
     toc_depth: 4
     toc_float: yes
-editor_options: 
-  chunk_output_type: inline
+editor_options:
+  chunk_output_type: console
 ---
 
 <style type="text/css">
@@ -35,17 +39,18 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
-if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
-source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
-source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+# if(computer == 'shocky' || computer == 'toshi'){ cloud_dir='/Users/Egor/Dropbox/' }
+if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+# if(computer == 'acer'){ cloud_dir='/Users/egora/Dropbox/' }
+source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
 library(R.utils)
-sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
-source(paste(dropbox_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
+sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+source(paste(cloud_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
 ## Data input
-ds = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/ds1.csv', sep='/'))
-dsa = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/dsa1.csv', sep='/'))
+ds = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/ds1.csv', sep='/'))
+dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa1.csv', sep='/'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))

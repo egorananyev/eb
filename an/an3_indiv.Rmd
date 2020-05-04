@@ -1,0 +1,106 @@
+---
+title: '[eb3] Individual-Level Analyses'
+author: "Egor Ananyev"
+date: '2020-04-13'
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
+    html_document:
+      number_sections: yes
+      toc: yes
+      toc_depth: 4
+      toc_float: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+editor_options:
+  chunk_output_type: inline
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+
+# Data input and parsing
+```{r set-options, message=F}
+# options(width=100)
+# options(width=90)
+out=F
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(reshape2)
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer=='shocky'){ cloud_dir='C:/Users/Egor/Dropbox/' }
+if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
+# if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
+# source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+# source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+library(R.utils)
+sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+source(paste('C:/gd/', 'Prog/R/myFunctions/pvalfn.R', sep=''))
+ds = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/ds3.csv', sep='/'))
+dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa3.csv', sep='/'))
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
+ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
+cue_valid_name = 'Cue Validity'
+```
+
+
+# Cueing
+
+
+## Boxplots
+```{r, fig.width=3.0, fig.height=2.5, results="hide"}
+for(cur_subj in unique(ds$subj)){
+  print(paste('=== SUBJECT', as.character(cur_subj), '==='))
+  # Subj-specific subset of data:
+  ss = ds[ds$subj==cur_subj, ]
+  # Accuracy (actual plots below):
+  acc = ddply(ss, .(CueValid, targ_soa, Cond), summarise, acc = mean(corr_resp))
+  # For RT analysis, further subsetting to accurate response trials only:
+  ss = ss[ss$corr_resp==1, ]
+  # Valid cue trials:
+  ctoa_val = ddply(ss[ss$CueValid=='Valid',], .(targ_soa, Cond, trial), summarise,
+                     RT = median(RT))
+  plot_box_ctoa(ctoa_val, 'RT Valid (ms)',
+                paste('RT on Valid Trials: Subj', as.character(cur_subj)),
+                out, 'targ_soa', eb='eb3', l=F)
+  # Invalid cue trials:
+  ctoa_inv = ddply(ss[ss$CueValid=='Invalid',], .(targ_soa, Cond, trial), summarise, 
+                       RT = median(RT))
+  plot_box_ctoa(ctoa_inv, 'RT Invalid (ms)',
+                paste('RT on Invalid Trials: Subj', as.character(cur_subj)),
+                out, 'targ_soa', eb='eb3', l=F)
+  # Cue benefit:
+  ctoa_val_all = ddply(ss[ss$CueValid=='Valid',], .(targ_soa, Cond), summarise, RT = median(RT))
+  ctoa_inv_all = ddply(ss[ss$CueValid=='Invalid',], .(targ_soa, Cond), summarise, RT = median(RT))
+  ctoa_adv = merge(ctoa_val_all, ctoa_inv_all, by=c('targ_soa', 'Cond'))
+  ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
+  plot_bar_ctoa(sss=ctoa_adv, 'RT Invalid - Valid (ms)',
+                paste('RT Cueing Advantage: Subj', as.character(cur_subj)),
+                out=F, 'targ_soa', eb='eb3')
+  # Plotting accuracy now (makes more sense visually):
+  plot_acc(acc, cue_type='Valid', plot_title='Accuracy on Valid Trials')
+  plot_acc(acc, cue_type='Invalid', plot_title='Accuracy on Invalid Trials')
+  plot(ggplot(data=ss) + theme_bw())
+}
+```
+
+
+
+
+

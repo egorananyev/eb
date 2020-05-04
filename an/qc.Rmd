@@ -21,20 +21,20 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 # options(width=100)
-eb = '3'
-subj = 'subj-02'
+eb = '1'
+subj = 'subj-04'
 cond = 'cond-v'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 1
+block = 3
 debug = F
-included_trials = c(2)
+included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
 computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
-if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
-# if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+# if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
+# if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
+if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
 library(R.utils)
 library(plyr)
@@ -154,7 +154,7 @@ if(cond == 'cond-c' | cond == 'cond-a'){
 }
 
 # Excluding trials with no space bar press in no-blink and AB conditions:
-if(cond == 'cond-c' | cond == 'cond-a'){
+if((cond == 'cond-c' | cond == 'cond-a') & eb == '3'){
   if(sum(is.na(trials$cue_resp_time))){
     excl_nospace = data.frame(trial=trials$trial[is.na(trials$cue_resp_time)],
                                      excl_reason = 'no space press')

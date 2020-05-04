@@ -5,7 +5,11 @@
 # Getting the data directory
 get_dir = function(dropbox_dir, eb, cue, subj, cond, sess){
     cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
-    this_sess = paste0('block-', as.character(sess))
+    if(eb=='1'){
+        this_sess = paste0('sess-', as.character(sess))
+    } else {
+        this_sess = paste0('block-', as.character(sess))
+    }
     data_dir = paste(cond_dir, dir(cond_dir, pattern=this_sess), sep='/')
     # TEMP: for now, just taking the last directory:
     # all_data_dirs = list.dirs(cond_dir)[-1]  # excluding the first (base) directory
@@ -204,7 +208,7 @@ parse_blanks = function(raw_data, trials){
             } else {
                 if(nrow(blanks)==1){  # if there's only one blank, see if it matches the trial
                     if(blanks[1] >= this_trial_sample_beg & blanks[2] < this_trial_sample_end){
-                        trial_blanks = blanks
+                        trial_blanks = data.frame(blanks)
                     } else {
                         trial_blanks = NULL
                     }
@@ -240,15 +244,15 @@ parse_blanks = function(raw_data, trials){
                 }
             }
         }
-        # if(nrow(all_blanks) > 0){
-        #     all_blanks$tot_blank_time = all_blanks$blank_time_end - all_blanks$blank_time_beg
-        # } else {
-        #     all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
-        #                             tot_blank_samples = NA, trial = NA,
-        #                             blank_time_beg = NA, blank_time_end = NA,
-        #                             tot_blank_time = NA)
-        # }
-        print(head(all_blanks))
+        if(nrow(all_blanks) == 0){
+            all_blanks = data.frame(blank_sample_beg = NA, blank_sample_end = NA,
+                                    tot_blank_samples = NA, trial = NA,
+                                    blank_time_beg = NA, blank_time_end = NA, tot_blank_time = NA,
+                                    blank_post_cue = NA, blank_post_targ = NA)
+            print('No blinks detected: returning NA columns.')
+        } else {
+            print(head(all_blanks))
+        }
     }
     return(all_blanks)
 }
@@ -276,7 +280,7 @@ label_sacc_samples = function(samples, blanks, trials, sacc_thresh = 2, eb_buff 
     # The following variable collects all samples labeled as saccades through the below loops:
     all_sacc_samples = NULL
     
-    # cur_trial = 2  #TEMP
+    # cur_trial = 4  #TEMP
     for(cur_trial in trials$trial){
         # Taking the trial row from the <trials> df:
         this_trial = trials[trials$trial==cur_trial,]
@@ -299,14 +303,28 @@ label_sacc_samples = function(samples, blanks, trials, sacc_thresh = 2, eb_buff 
         # For saccade search, limiting to eye-tracking samples after cue and before response:
         trial_etx = trial_etx[trial_etx$sample > trials$cue_sample[trials$trial==cur_trial],]
         trial_etx = trial_etx[trial_etx$sample < trials$resp_sample[trials$trial==cur_trial],]
+        # We are only interested in pre-responce blanks for recording eye position:
+        trial_blanks = blanks[blanks$trial == cur_trial &
+                              blanks$blank_sample_end < this_trial$resp_sample, ]
+        if(nrow(trial_blanks) == 0){
+            no_blanks_found = TRUE
+        } else {
+            if(nrow(trial_blanks) == 1){
+                if(is.na(trial_blanks[1,1])){
+                    no_blanks_found = TRUE
+                } else {
+                    no_blanks_found = FALSE
+                }
+            } else {
+                no_blanks_found = FALSE
+            }
+        }
         
         # Looping through blanks (if any) to label samples to examine -- only non-eye blink samples
         # (+/- a buffer zone, <buff_ms>) will be further examined:
-        if(!cur_trial %in% blanks$trial){  # if there are no blanks for this trial,
+        if(no_blanks_found == TRUE){  # if there are no blanks for this trial,
             trial_noneb_etx = trial_etx  # then all samples will be examined
         } else {  # if there are any blanks for this trial,
-            # Blanks for this trial:
-            trial_blanks = blanks[blanks$trial==cur_trial,]
             # Since the following loops goes through however many blanks there are for this trial,
             # it is necessary to filter the same data set that many times:
             trial_noneb_etx = trial_etx

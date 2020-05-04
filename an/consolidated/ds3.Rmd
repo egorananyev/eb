@@ -40,17 +40,17 @@ for(cur_cue_cond in cue_conds){
   cur_cue_bin = as.numeric(cur_cue_cond == 'cp')  # binary variable for whether the cue is pred've
   data_dir = paste0(all_data_dir, cur_cue_cond, '/')
   subjs = dir(data_dir, pattern='subj-')
-  # subjs = subjs[1]
+  # subjs = subjs[5]
   # subjs = subjs[1:17]  # temp
   # cur_subj = subjs[1]  # temp
   for(cur_subj in subjs){
     cur_subj_dir = paste0(data_dir, cur_subj)
-    # cur_cond = conds[1]  # temp
+    # cur_cond = conds[2]  # temp
     for(cur_cond in conds){
       block_order = 0
       cur_cond_dir = paste(cur_subj_dir, cur_cond, sep='/')
       blocks = dir(cur_cond_dir, pattern='block-')
-      # cur_block = blocks[1]  # temp
+      # cur_block = blocks[5]  # temp
       for(cur_block in blocks){
         cur_block_dir = paste(cur_cond_dir, cur_block, sep='/')
         print(cur_block_dir)
@@ -125,8 +125,9 @@ excl = ds_exclude(excl_short, 'short RT')
 excl_long = ds[ds$rt>long_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_long, 'long RT')
 # Excluding trials with false responses (analyzed separately from RTs):
-excl_false = ds[ds$corr_resp==0, cols_to_include]
-excl = ds_exclude(excl_false, 'incorrect response')
+# (2020-04-14: no longer doing this; will analyze accuracy)
+# excl_false = ds[ds$corr_resp==0, cols_to_include]
+# excl = ds_exclude(excl_false, 'incorrect response')
 # Displaying number of trials to be excluded, based on condition and block
 head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))
 # Excluding trials based on the quality control & the RT exclusion criteria:

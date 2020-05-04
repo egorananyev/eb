@@ -11,8 +11,18 @@ plot_qc = function(trial_samples, trial_blanks, this_trial, trial_sacc){
     # p = p + xlim(xlims)
     p = p + scale_colour_manual(values=c('blue', 'chocolate'))
     
+    # Assigning the number of blanks to be processed:
+    if(nrow(trial_blanks) == 1){  # if there's a single row in <blanks>
+        if(is.na(trial_blanks[1,1])){
+            numof_blanks = 0  # if there is a blank table
+        } else {
+            numof_blanks = 1
+        }
+    } else {
+        numof_blanks = nrow(trial_blanks)  # number of blanks in this trial:
+    }
+    
     # Marking blanks:
-    numof_blanks = nrow(trial_blanks)  # number of blanks in this trial:
     if(!is.na(numof_blanks) & numof_blanks >= 1){
         for(cur_blank in 1:numof_blanks){
             this_blank_df = trial_blanks[cur_blank, ]

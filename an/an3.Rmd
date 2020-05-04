@@ -1,12 +1,11 @@
 ---
 title: '[eb3] Analyses'
 author: "Egor Ananyev"
-date: '2020-03-09'
+date: '2020-04-13'
 output:
-  html_document:
-    df_print: paged
+  html_document: 
     toc: yes
-    toc_depth: '4'
+    toc_depth: 4
   html_notebook:
     html_document:
       number_sections: yes
@@ -18,7 +17,7 @@ output:
     toc_depth: 4
     toc_float: yes
 editor_options:
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 <style type="text/css">
@@ -33,7 +32,7 @@ code.r{
 
 # Data input and parsing
 ```{r set-options, message=F}
-# options(width=100)
+options(width=100)
 # options(width=90)
 out=F
 library(plyr)
@@ -42,12 +41,12 @@ library(ggplot2)
 library(lme4)
 library(reshape2)
 computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer=='shocky'){ cloud_dir='C:/Users/Egor/Dropbox/' }
-if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
-# if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
+# if(computer=='shocky'){ cloud_dir='C:/Users/Egor/Dropbox/' }
+# if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 if(computer=='station3'){ cloud_dir='/home/station3/Desktop/Egor/Dropbox/' }
-source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
-source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+# source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
+# source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
 library(R.utils)
 sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
 source(paste('C:/gd/', 'Prog/R/myFunctions/pvalfn.R', sep=''))
@@ -65,11 +64,11 @@ cue_valid_name = 'Cue Validity'
 
 ## Boxplots
 ```{r, fig.width=8.5, fig.height=2.5, results="hide"}
-#TODO test this code
-ctoa_valid = ddply(ds[ds$CueValid=='Valid',], .(targ_soa, Cond, subj), summarise,
+ss_corr = ds[ds$corr_resp==1, ]
+ctoa_valid = ddply(ss_corr[ss_corr$CueValid=='Valid',], .(targ_soa, Cond, subj), summarise,
                    RT=median(RT))
 plot_box_ctoa(ctoa_valid, 'RT Valid (ms)', 'RT on Valid Trials', out, 'targ_soa', eb='eb3')
-ctoa_invalid = ddply(ds[ds$CueValid=='Invalid',], .(targ_soa, Cond, subj), summarise, 
+ctoa_invalid = ddply(ss_corr[ss_corr$CueValid=='Invalid',], .(targ_soa, Cond, subj), summarise, 
                   RT=median(RT))
 plot_box_ctoa(ctoa_invalid, 'RT Invalid (ms)', 'RT on Invalid Trials', out, 'targ_soa', eb='eb3')
 ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('targ_soa', 'Cond', 'subj'))
@@ -77,4 +76,356 @@ ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
 plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
 ```
 
+
+# Data sets
+
+Late CTOA data set:
+
+```{r}
+ss_late = ds[ds$targ_soa > 0.5, ]
+ss_late$CTOA = factor(ss_late$targ_soa)
+ss_late$targ_soa_c = ss_late$targ_soa - .9
+ss_late$targ_soa_0 = ss_late$targ_soa - .6
+ss_late$incorr = 1 - ss_late$corr_resp
+```
+
+Adding early NB cueing:
+
+```{r}
+ss_early = ds[ds$targ_soa <= 0.5, ]
+ss_early_val = ddply(ss_early[ss_early$CueValid=='Valid',], .(subj), summarise,
+                     RT_val = median(RT))
+ss_early_inv = ddply(ss_early[ss_early$CueValid=='Invalid',], .(subj), summarise,
+                     RT_inv = median(RT))
+ss_early_adv = merge(ss_early_val, ss_early_inv, by=c('subj'))
+ss_early_adv$RT_early_adv = ss_early_adv$RT_inv - ss_early_adv$RT_val  # Invalid - Valid RT
+```
+
+```{r}
+ss_late = merge(ss_late, ss_early_adv[ , c('subj', 'RT_early_adv')], by='subj')
+head(ss_late)
+ss_late_corr = ss_late[ss_late$corr_resp==1, ]
+ss_late_incorr = ss_late[ss_late$corr_resp==0, ]
+```
+
+Recording per-subject accuracy:
+
+```{r}
+acc_ds = merge(ss_late, ddply(ds, .(subj), summarise, inacc = (1 - mean(corr_resp)) * 100), by='subj')
+```
+
+Blink duration:
+
+```{r}
+dsa$bdur = dsa$tot_blank_time
+bdur_sumss = ddply(dsa, .(Cond, subj), summarize, 
+                        bdur_ave = mean(bdur),
+                        bdur_sd = sd(bdur))
+dsa = merge(dsa, bdur_sumss, by=c('Cond', 'subj'))
+dsa$bdur_z = with(dsa, (bdur - bdur_ave) / bdur_sd)
+```
+
+Blink latency:
+
+```{r}
+dsa$blat = dsa$blank_time_beg - (dsa$cue_time - dsa$trial_time_beg)
+blat_sumss = ddply(dsa, .(Cond, subj), summarize, 
+                        blat_ave = mean(blat),
+                        blat_sd = sd(blat))
+dsa = merge(dsa, blat_sumss, by=c('Cond', 'subj'))
+dsa$blat_z = with(dsa, (blat - blat_ave) / blat_sd)
+```
+
+
+# Basic (nuisance-free) model
+
+## CTOA as factor:
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * CTOA + (1|subj), data = ss_late_corr)))
+```
+
+Same model but without outliers 20 and 24:
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * CTOA + (1|subj),
+                  data = ss_late_corr[!ss_late_corr$subj %in% c(20,24), ])))
+```
+
+## CTOA as numeric:
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa + (1|subj), data = ss_late_corr)))
+```
+
+## Looking only at CTOA = 900
+
+```{r}
+ss_900 = ss_late_corr[ss_late_corr$CTOA==0.9,]
+print(lmerfn(lmer(RT ~ cue_valid * Cond + block + targ_right + (1|subj), data = ss_900)))
+```
+
+Same but without the two outlier subjects:
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond + block + targ_right + (1|subj),
+                  data = ss_900[!ss_900$subj %in% c(20,24), ])))
+```
+
+```{r}
+ddply(ss_900, .(Cond, cue_valid), summarize, RT_mean=mean(RT), RT_median=median(RT))
+```
+
+```{r}
+ddply(ctoa_adv[ctoa_adv$targ_soa==0.9,], .(Cond), summarize, RT_mean=mean(RT), RT_median=median(RT))
+```
+
+The means and the medians tell the opposite story. Might necessitate some data transformation. Although the linear models should be resillient to the individual differences in RT.
+
+
+# Cueing ~ accuracy
+
+The following model type results in rank deficiency due to insufficient number of incorrect trials:
+
+```{r}
+# print(lmerfn(lmer(RT ~ cue_valid * Cond * CTOA + (1|subj), data = ss_late_incorr)))
+```
+
+The full model yields nothing significant:
+
+```{r}
+head(lmerfn(lmer(RT ~ cue_valid * Cond * CTOA * inacc + block + (1|subj), data = acc_ds)), 10)
+print('...other effects (nonsignificant)...')
+```
+
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * inacc * CTOA + block + (1|subj), data = acc_ds)))
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond + block + (1|subj), 
+                  data = acc_ds[acc_ds$CTOA==0.9, ])))
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * inacc + block + (1|subj), 
+                  data = acc_ds[acc_ds$CTOA==0.9, ])))
+```
+
+
+# Does early RT predict later advantage?
+
+## Early RT * cue_validity
+
+```{r}
+m = lmerfn(lmer(RT ~ cue_valid * RT_early_adv + block + (1|subj), data = ss_late_corr))
+print(m)
+```
+
+Before we look at the effect of CTOA or eye blink condition, early RT advantage seems to predict later advantage. With ever 1 ms advantage early on, we expect ~0.5 ms reduction in RT to validly cued targets. 
+
+
+## Early RT * validity * condition
+
+```{r}
+m = lmerfn(lmer(RT ~ cue_valid * RT_early_adv * Cond + block + (1|subj),
+                data = ss_late_corr))
+print(m)
+```
+
+When we add condition to the mix, few things happen:
+* In addition to the speed-up to valid targets [#6],
+* we observe a marginal 1 ms slowdown to the invalidly cued target [#2].
+* Early RT advantage also mitigates the AB slowdown [#3 & #9],
+* but not the PB slowdown [#4].
+
+Unclear why only AB condition is affected.
+
+
+## Early RT * validity * CTOA
+
+```{r}
+m = lmerfn(lmer(RT ~ cue_valid * RT_early_adv * CTOA + block + (1|subj),
+                data = ss_late_corr))
+print(m)
+```
+
+* In addition to the uncued disadvantage [#2]
+* and cued advantage [#6],
+* an early RT benefit results in a speed up to the later CTOA of 1.2 s.
+
+This suggests that effect #2 is specific to CTOAs of 0.6 and 0.9 s.
+
+
+## Early RT * everything
+
+```{r}
+m = lmerfn(lmer(RT ~ cue_valid * RT_early_adv * CTOA * Cond + block + (1|subj),
+                data = ss_late_corr))
+print(m)
+```
+
+When everything is pooled together, only two effects remain, both associated with the early RT advantage:
+* the slow-down to the invalidly cued targets [#2]
+* and the speed-up to the valid targets [#8].
+
+
+# Eye blinks
+
+
+## Blink durations
+
+### Raw
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=bdur, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~targ_soa) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Duration (s)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * bdur + block + (1|subj), data = dsa)))
+```
+
+The model doesn't yield any interesting significant effects if we simply consider the raw blink duration.
+
+
+### Trial-by-trial (normalized)
+
+```{r, fig.width=5.5, fig.height=2.5}
+bdurz_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, targ_soa), summarise,
+                           RT=mean(RT), bdur_ave=mean(bdur_z))
+p = ggplot(bdurz_rt_cond_ctoa, aes(x=bdur_ave, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~targ_soa) + xlab('Normalized Blink Duration') + ylab('Reaction Time (ms)') +
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r, fig.width=5.5, fig.height=3.5}
+cor_blink_dur_z = ddply(dsa, .(subj, CueValid, Cond, targ_soa), summarise,
+                        corcoeff = cor(RT, bdur))
+p = ggplot(cor_blink_dur_z, aes(x=CueValid, y=corcoeff, color=CueValid)) +
+    geom_boxplot() + facet_grid(Cond~factor(targ_soa)) + xlab('Cue Validity') + 
+    geom_dotplot(binaxis='y', stackdir='center', dotsize=1, binwidth=.05, alpha=0.5, 
+                 aes(fill=CueValid)) + 
+    ylab('RT x Norm. Blink Duration Correlation')
+p = plot_themefy(p)
+if(out){outpdf('eb3_rt~bdur-z_cor', w=5.0, h=3.5, s=T)}
+print(p)
+```
+
+The above plot is less informative than the one before, as it does not communicate the size of the cueing benefit for different blink durations (or any at all). But it generally comports with the only correlation of significance being: the longer the blink, the longer the RT to the invalidly cued target post-blink.
+
+However, it does not show the negative correlation for the valid cues...
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * bdur_z + block + (1|subj), data = dsa)))
+```
+
+Some interesting effects associated with trial-by-trial variation of the blink duration.
+
+For Prompted (Real) Blink conditions:
+
+* There is a cue validity benefit for the longer real [#13] but not artificial [#9] blink.
+
+* The cueing benefit is specific to early CTOAs (i.e., disappears at later CTOAs) [#16].
+
+
+For artificial blinks:
+
+* Regardless of whether the target was validly cued, shorter RTs were the result of either:
+
+  * longer blink trials [#4],
+  
+  * or larger CTOAs [#3],
+  
+  * but not both [#11].
+
+
+### Individual
+
+```{r, fig.width=5.5, fig.height=2.5}
+bdur_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, targ_soa), summarise,
+                          RT=mean(RT), bdur_ave=mean(bdur))
+p = ggplot(bdur_rt_cond_ctoa, aes(x=bdur_ave, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~targ_soa) + xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)') +
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r}
+merge_by = c('subj', 'CueValid', 'CondFull', 'targ_soa')
+dsa_bdur = merge(dsa, bdur_rt_cond_ctoa[, c(merge_by, 'bdur_ave')], by=merge_by)
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * bdur_ave + block + (1|subj), data = dsa)))
+```
+
+
+## Blink latencies
+
+### Raw
+
+```{r, fig.width=5.5, fig.height=2.5}
+p = ggplot(dsa, aes(x=blat, y=RT, color=CueValid)) + 
+    stat_smooth(method='lm', alpha=0.15) +
+    facet_grid(Cond~targ_soa) + guides(color=guide_legend(title='Cue Validity')) +
+    xlab('Blink Latency (s)') + ylab('Reaction Time (ms)')
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * blat + block + (1|subj), data = dsa)))
+```
+
+No cueing-related effects.
+
+
+### Trial-by-trial (normalized)
+
+```{r, fig.width=5.5, fig.height=2.5}
+blatz_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, targ_soa), summarise,
+                           RT=mean(RT), blat_ave=mean(blat_z))
+p = ggplot(blatz_rt_cond_ctoa, aes(x=blat_ave, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~targ_soa) + xlab('Normalized Blink Latency') + ylab('Reaction Time (ms)') +
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * blat_z + block + (1|subj), data = dsa)))
+```
+
+Also no cueing-related effects, thankfully.
+
+
+### Individual
+
+```{r, fig.width=5.5, fig.height=2.5}
+blat_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, targ_soa), summarise,
+                          RT=mean(RT), blat_ave=mean(blat))
+p = ggplot(blat_rt_cond_ctoa, aes(x=blat_ave, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
+    stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
+    facet_grid(CondFull~targ_soa) + xlab('Blink Latency (s)') + ylab('Reaction Time (ms)') +
+    guides(colour=guide_legend(title='Cue')) + theme_bw()
+p = plot_themefy(p)
+plot(p)
+```
+
+```{r}
+merge_by = c('subj', 'CueValid', 'CondFull', 'targ_soa')
+dsa_blat = merge(dsa, blat_rt_cond_ctoa[, c(merge_by, 'blat_ave')], by=merge_by)
+print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * blat_ave + block + (1|subj), data = dsa)))
+```
+
+Some condition-specific effects.
 
