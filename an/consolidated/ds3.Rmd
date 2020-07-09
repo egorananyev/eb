@@ -141,7 +141,8 @@ ds = ds_naming(ds)
 # Creating variable columns with rescaled or binned variables:
 ds = ds_vars(ds, 0)  # not binning CTOAs, since it doesn't vary for expt3
 # Merging eye tracking and behavioral data (AB & PB only):
-dsa = ds_et_merge(et, ds)
+# dsa = ds_et_merge(et, ds)
+dsa = ds_et_merge(et, ds, by=c('subj', 'cue_pred', 'block', 'trial', 'cond'))
 # Summary stats
 head(ddply(ds, .(subj, cue_pred, cond, cue_valid), summarise, mean_RT = mean(RT)))
 ```

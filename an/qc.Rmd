@@ -22,9 +22,9 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '1'
-subj = 'subj-04'
+subj = 'subj-25'
 cond = 'cond-v'
-cue = 'cp'  # cp/cu = predictive/unpredictive
+cue = 'cu'  # cp/cu = predictive/unpredictive
 block = 3
 debug = F
 included_trials = c(1)  # if debug==T

@@ -5,8 +5,9 @@
 
 ## Plotting for eb1/2-an
 
-outpdf = function(n='plot.pdf', w=3.5, h=2.5, s=F, j=T){  # name, width, height, suppress warn
-  pdf(paste0('plots/', n, '.pdf'), width=w, height=h)
+outpdf = function(n='plot', w=3.5, h=2.5, s=F, j=T){  # name, width, height, suppress warn
+  # pdf(paste0('plots/', n, '.pdf'), width=w, height=h)
+  pdf(paste0(n, '.pdf'), width=w, height=h)
   if(s){
     suppressWarnings(plot(p))
   } else {
@@ -14,7 +15,8 @@ outpdf = function(n='plot.pdf', w=3.5, h=2.5, s=F, j=T){  # name, width, height,
   }
   x = dev.off()
   if(j){
-    png(paste0('plots/', n, '.png'), width=w, height=h, units='in', res=300)
+    # png(paste0('plots/', n, '.png'), width=w, height=h, units='in', res=300)
+    png(paste0(n, '.png'), width=w, height=h, units='in', res=600)
     if(s){
       suppressWarnings(plot(p))
     } else {

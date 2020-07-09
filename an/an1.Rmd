@@ -4,21 +4,13 @@ author: "Egor Ananyev"
 date: '2019-01-04'
 output:
   html_document:
-    df_print: paged
+    df_print: kable
     toc: yes
     toc_depth: '4'
-  html_notebook:
-    html_document:
-      number_sections: yes
-      toc: yes
-      toc_depth: 4
-      toc_float: yes
     number_sections: yes
-    toc: yes
-    toc_depth: 4
     toc_float: yes
 editor_options:
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 <style type="text/css">
@@ -33,12 +25,14 @@ code.r{
 
 # Data and function input
 ```{r set-options, message=F}
+# options(width=100)
 out=F
-options(width=100)
 library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
+library(lmerTest)
+# library(reshape2)
 computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 # if(computer == 'shocky' || computer == 'toshi'){ cloud_dir='/Users/Egor/Dropbox/' }
 if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
@@ -54,6 +48,7 @@ dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa1.csv', sep='
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
+cue_valid_name = 'Cue Validity'
 ```
 
 
@@ -99,7 +94,8 @@ suppressWarnings(plot(p))
 ```{r}
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
-lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+# lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+pvalfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
 ```
 1. The analysis shows a clear validity effect, with a valid cue taking longer to respond to (#3), i.e., IOR.
 2. If the cue is predictive, the responses are longer (#4).
@@ -113,7 +109,7 @@ Double-checking with factored cue validity and predictiveness, the estimates are
 ```{r}
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 # ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
-# lmerfn(lmer(RT~Cond*factor(cue_valid)*factor(cue_pred) + (1|subj), data=ds))
+# pvalfn(lmer(RT~Cond*factor(cue_valid)*factor(cue_pred) + (1|subj), data=ds))
 ```
 
 
@@ -160,7 +156,7 @@ print(mRes)
 And so are the no-blink and AB conditions.
 
 
-# Taking CTOA into consideration
+# CTOA
 
 ```{r, fig.width=5.5, fig.height=3.5}
 ## Heavy smoothing (gam)
@@ -189,10 +185,27 @@ if(out){outpdf('eb1_rt~ctoa_loess', w=7.5, h=3.5)}
 plot(p)
 ```
 
+```{r, fig.width=8, fig.height=1.5}
+## Plotting individual slopes + an average slope for CTOAs
+ds$Cond <- factor(ds$Cond, c('NoBlink', 'Artificial', 'Prompted')) # this works for lm
+# ds_ss = ds[ds$Cond %in% c('Prompted', 'NoBlink'), ]
+ds_ss = ds
+ds_ss = ds_ss[ds_ss$CuePred=='Predictive', ]
+p = ggplot(ds_ss, aes(x=ctoa, y=RT)) + #geom_point(aes(color=factor(subj))) + 
+  geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
+                                            alpha=.01), se=F) +
+  geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(CueValid))) +
+  facet_grid(cols=vars(Cond)) + #ylim(250,450) +
+  xlab('Cue-To-Target Onset Asynchrony (ms)') + ylab('Reaction Time (ms)')+
+  guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
+if(out){outpdf('eb1_rt~ctoa-indiv_slopes_brief', w=8, h=2, j=T)}
+suppressWarnings(plot(p))
+```
+
 ```{r}
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
-lmerfn(lmer(RT~Cond*cue_valid*cue_pred*ctoa0_s + (1|subj), data=ds))
+pvalfn(lmer(RT~Cond*cue_valid*cue_pred*ctoa0_s + (1|subj), data=ds))
 ```
 1. When a target appears later (increase in CTOA), thre is a significant reduction in RT (#5).
 2. There is also the IOR (#3).
@@ -202,7 +215,6 @@ But no other effect is significant.
 # Creating blink parameter variables
 
 ```{r}
-cue_valid_name = 'Cue Validity'
 dsa$blink_targ_async = 1000 * (dsa$targ_time - dsa$trial_start - dsa$blank_time_end)
 dsa$blink_targ_async_c = dsa$blink_targ_async - mean(dsa$blink_targ_async)
 dsa$tot_blank_time = 1000 * (dsa$tot_blank_time)
@@ -236,11 +248,6 @@ dsa$blink_dur_z = with(dsa, (blink_dur - blink_dur_ave) / blink_dur_sd)
 
 # Raw blink duration
 
-Rescaling the blink duration such that 1 unit = 100 ms increment (makes the coefficients more meaningful):
-
-```{r}
-```
-
 ```{r, fig.width=4.5, fig.height=2.5}
 p = ggplot(dsa, aes(x=blink_dur, y=RT, color=CueValid)) + 
     stat_smooth(method='lm', alpha=0.15) +
@@ -253,10 +260,10 @@ print(p)
 
 ```{r}
 dsa_temp = dsa
-dsa_temp$blink_dur100 = dsa_temp$blink_dur * 10
-dsa_temp$blink_dur_ms = dsa_temp$blink_dur * 1000
-dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
-lmerfn(lmer(RT ~ blink_dur_c * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
+# dsa_temp$blink_dur100 = dsa_temp$blink_dur * 10
+# dsa_temp$blink_dur_ms = dsa_temp$blink_dur * 1000
+# dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
+pvalfn(lmer(RT ~ blink_dur * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
 ```
 Longer blinks are associated with cueing benefit in voluntary attention condition (#15). Blinks that are longer by a 100 ms cause a 27 ms speed-up in RTs to validly cued targets in predictive cueing condition...
 
@@ -266,18 +273,32 @@ Splitting the analyses into predictive and unpredictive portions shows blink dur
 
 ```{r}
 ### Predictive Cues
-# lmerfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa[dsa$cue_pred==1,]))
+pvalfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa_temp[dsa_temp$cue_pred==1,]))
 ### Unpredictive Cues
-# lmerfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa[dsa$cue_pred==0,]))
+pvalfn(lmer(RT~blink_dur*cue_valid*Cond + (1|subj),  data=dsa_temp[dsa_temp$cue_pred==0,]))
 ```
 
+```{r}
+library(BayesFactor)
+bf_ssa = dsa_temp[dsa_temp$cond=='v',]
+bf_ssa$subj <- factor(bf_ssa$subj)
+head(bf_ssa)
+```
+
+```{r}
+### Prompted vs no blink
+mRes = 1/generalTestBF(RT ~ blink_dur * cue_valid + subj,
+                       data=bf_ssa, whichRandom='subj', 
+                       neverExclude='subj', whichModels='top')
+print(mRes)
+```
 
 # Normalized blink duration
 
 
 ## Continuous blink duration
 
-```{r, fig.width=4.5, fig.height=3.5}
+```{r, fig.width=4.5, fig.height=3.0}
 p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
     stat_smooth(method='lm', alpha=0.15) + xlab('Normalized Blink Duration (z)') +
     xlim(-2.5, 2.5) + facet_grid(Cond~CuePred) + ylab('Reaction Time (ms)') + 
@@ -285,6 +306,9 @@ p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) +
 p = plot_themefy(p)
 if(out){outpdf('eb1_rt~bdur-z_lin', w=4.5, h=3.5, s=T)}
 suppressWarnings(plot(p))
+```
+
+```{r, fig.width=4.5, fig.height=3.0}
 p = ggplot(dsa, aes(x=blink_dur_z, y=RT, color=CueValid)) + 
     xlab('Normalized Blink Duration (z)') +
     stat_smooth(method='gam', formula=y~s(x, bs='cs'), alpha=0.15) +
@@ -308,7 +332,7 @@ print(p)
 ```
 
 ```{r}
-lmerfn(lmer(RT~blink_dur_z*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+pvalfn(lmer(RT~blink_dur_z*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
 ```
 ...I threw several attempts at trying to interpret this table, to no avail. I think it's best to simplify this analysis with the mean split.
 
@@ -344,7 +368,7 @@ print(p)
 ```
 
 ```{r}
-lmerfn(lmer(RT~blink_dur_split*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
+pvalfn(lmer(RT~blink_dur_split*cue_valid*cue_pred*Cond + (1|subj),  data=dsa))
 ```
 Model baseline: AB, Unpredictive & Invalid Cue, Short Blink
 
@@ -376,11 +400,12 @@ plot(p)
 ```
 
 ```{r, fig.width=5.5, fig.height=4}
+## Plotting individual slopes + an average slope
 p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + #geom_point(aes(color=factor(subj))) + 
   geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
                                             alpha=.01), se=F) +
   geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(CueValid))) +
-  facet_grid(cols=vars(CuePredFull), rows=vars(Cond)) + ylim(250,450) +
+  facet_grid(CuePredFull~Cond) + ylim(250,450) +
   xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
   guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
 if(out){outpdf('eb1_rt~bdur-indiv_slopes', w=5.5, h=4, s=T)}
@@ -403,7 +428,7 @@ plot(p)
 
 ```{r}
 dsa$blink_dur_ave_c = with(dsa, blink_dur_ave - mean(blink_dur_ave))  # centering the continuous variable
-lmerfn(lmer(RT~blink_dur_ave_c*cue_valid*cue_pred*Cond + (1|subj), data=dsa))
+pvalfn(lmer(RT~blink_dur_ave_c*cue_valid*cue_pred*Cond + (1|subj), data=dsa))
 ```
 There's the IOR (#2) and its reversal in predictive cue condition (#7), as well as the general slow-down in the predictive cue condition (#3). Consistent with the previous analyses, there is no difference between artificial and real blinks.
 
@@ -486,7 +511,7 @@ Comparing against the nuisance-free model:
 
 ```{r}
 ds_order$Cond <- factor(ds_order$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
-lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds_order))
+pvalfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds_order))
 ```
 
 Nuisance model:
@@ -495,7 +520,7 @@ Nuisance model:
 ds_order$sess_order_0 = ds_order$sess_order - 1  # zero is first session
 ds_order$cond_order_c = ds_order$cond_order - 1  # centered on second block
 ds_order$block_order_c = ds_order$block_order - 1  # centered on second condition
-lmerfn(lmer(RT ~ Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
+pvalfn(lmer(RT ~ Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
               (1|subj), data=ds_order))
 ```
 
@@ -506,8 +531,8 @@ Nuisance-free model:
 
 ```{r}
 dsa_temp = dsa
-dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
-lmerfn(lmer(RT ~ blink_dur_c * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
+# dsa_temp$blink_dur_c = dsa_temp$blink_dur - dsa_temp$blink_dur_ave
+pvalfn(lmer(RT ~ blink_dur * cue_valid * cue_pred * Cond + (1|subj),  data=dsa_temp))
 ```
 
 Nuisance model:
@@ -517,7 +542,7 @@ dsa_order$sess_order_0 = dsa_order$sess_order - 1  # zero is first session
 dsa_order$cond_order_c = dsa_order$cond_order - 1  # centered on second block
 dsa_order$block_order_c = dsa_order$block_order - 1  # centered on second condition
 dsa_order$blink_dur_c = dsa_order$blink_dur - dsa_order$blink_dur_ave
-lmerfn(lmer(RT ~ blink_dur_c * Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
+pvalfn(lmer(RT ~ blink_dur_c * Cond * cue_valid * cue_pred + sess_order_0 + cond_order_c + block_order_c + 
               (1|subj), data=dsa_order))
 ```
 The interaction between blink duration and prompted condition is no longer significant, but everything else holds up.
@@ -531,6 +556,6 @@ The effects associated with teh blink duration per se:
 
 Just out of curiousity, looking into the effects of nuisance parameters on blink duration:
 ```{r}
-lmerfn(lmer(blink_dur ~ Cond * sess_order_0 * cond_order_c * block_order_c + (1|subj), data=dsa_order))
+pvalfn(lmer(blink_dur ~ Cond * sess_order_0 * cond_order_c * block_order_c + (1|subj), data=dsa_order))
 ```
 Too many interactions.

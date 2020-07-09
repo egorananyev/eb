@@ -4,20 +4,13 @@ author: "Egor Ananyev"
 date: '2020-04-13'
 output:
   html_document: 
+    df_print: kable
     toc: yes
     toc_depth: 4
-  html_notebook:
-    html_document:
-      number_sections: yes
-      toc: yes
-      toc_depth: 4
-      toc_float: yes
     number_sections: yes
-    toc: yes
-    toc_depth: 4
     toc_float: yes
 editor_options:
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 <style type="text/css">
@@ -32,14 +25,16 @@ code.r{
 
 # Data input and parsing
 ```{r set-options, message=F}
-options(width=100)
+# options(width=100)
 # options(width=90)
 out=F
 library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
-library(reshape2)
+library(lmerTest)
+library(reshape)
+# library(reshape2)
 computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
 # if(computer=='shocky'){ cloud_dir='C:/Users/Egor/Dropbox/' }
@@ -76,6 +71,13 @@ ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
 plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
 ```
 
+```{r, fig.width=8.5, fig.height=2.5, results="hide"}
+p = ggplot(ss_corr, aes(x=targ_soa, y=RT, color=CueValid)) + 
+    stat_smooth(method='loess', alpha=0.15) + facet_grid(.~Cond)
+p = plot_themefy(p)
+plot(p)
+suppressWarnings(plot(p))
+```
 
 # Data sets
 
@@ -355,10 +357,22 @@ bdur_rt_cond_ctoa = ddply(dsa, .(subj, CueValid, CondFull, targ_soa), summarise,
                           RT=mean(RT), bdur_ave=mean(bdur))
 p = ggplot(bdur_rt_cond_ctoa, aes(x=bdur_ave, y=RT)) + geom_point(aes(color=factor(CueValid))) + 
     stat_smooth(method='lm', aes(color=factor(CueValid)), alpha=.2) +
-    facet_grid(CondFull~targ_soa) + xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)') +
+    facet_grid(CondFull~targ_soa) + xlab('Blink Duration (s)') + ylab('Reaction Time (ms)') +
     guides(colour=guide_legend(title='Cue')) + theme_bw()
 p = plot_themefy(p)
 plot(p)
+```
+
+```{r, fig.width=7.5, fig.height=4}
+p = ggplot(dsa, aes(x=tot_blank_time, y=RT)) + #geom_point(aes(color=factor(subj))) + 
+  geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
+                                            alpha=.01), se=F) +
+  geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(CueValid))) +
+  facet_grid(CondFull~targ_soa) + ylim(250,450) +
+  xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+  guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
+if(out){outpdf('eb3_rt~bdur-indiv_slopes', w=5.5, h=4, s=T)}
+suppressWarnings(plot(p))
 ```
 
 ```{r}
@@ -428,4 +442,7 @@ print(lmerfn(lmer(RT ~ cue_valid_c * Cond * targ_soa * blat_ave + block + (1|sub
 ```
 
 Some condition-specific effects.
+
+
+# Post-targ blinks
 
