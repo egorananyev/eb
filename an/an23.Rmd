@@ -1,0 +1,104 @@
+---
+title: "[eb23] Comparing Expts 2 & 3"
+author: "Egor Ananyev"
+date: "2020-07-10"
+output:
+    html_document:
+        toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+# Data and function input
+
+```{r set-options, message=F}
+# options(width=100)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer == 'shocky' || computer == 'toshi'){ cloud_dir='/Users/Egor/Dropbox/' }
+if(computer == 'acer'){ cloud_dir='C:/Users/egora/Prog' }
+source(paste(cloud_dir, 'eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(cloud_dir, 'eb/an/funs_an/BF_U.R', sep='/'))
+## Data input
+ds2 = read.csv(paste(cloud_dir, 'eb/an/consolidated/ds2.csv', sep='/'))
+dsa2 = read.csv(paste(cloud_dir, 'eb/an/consolidated/dsa2.csv', sep='/'))
+ds3 = read.csv(paste(cloud_dir, 'eb/an/consolidated/ds3.csv', sep='/'))
+dsa3 = read.csv(paste(cloud_dir, 'eb/an/consolidated/dsa3.csv', sep='/'))
+```
+
+# Linear models
+
+```{r}
+## Only including the predictive cueing condition from Expt 1:
+ds2 = ds2[ds2$cue_pred==1,]
+## Only including the trials within a certain CTOA range from Expt 2:
+ds3 = ds3[ds3$ctoa <= max(ds2$ctoa),]
+## Combining the two datasets:
+ds = rbind(ds2, ds3)
+## A better-named experiment column:
+ds$expt = 'Expt2'
+ds$expt[ds$exp_name=='eb3'] = 'Expt3'
+## Sanity check
+## Reordering the levels
+ds$Cond <- factor(ds$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+```
+
+## Sanity check model
+
+A model confirming the effects of Expt 1.
+
+```{r}
+ds1$Cond <- factor(ds1$Cond, c('Prompted','NoBlink','Artificial')) #this works for lm
+summary(lmer(RT~Cond*cue_valid + (1|subj), data=ds1))
+```
+
+## Model with CTOA
+
+```{r}
+summary(lmer(RT~expt*Cond*cue_valid*ctoa + (1|subj), data=ds))
+```
+
+The model yields only one effect of significance: there is a significant increase in RT in Expt 2. Since there is no interaction with this effect, this applies across eye blink conditions and cue validities.
+
+The fact that there is no effect of CTOA is good, because we can simply ignore it from now on... Although there *is* a marginally significant interaction of Expt# & CTOA, where CTOA in the second experiment is slightly more negative -- implying slightly faster RTs in later time periods.
+
+## Model without CTOA
+
+```{r}
+summary(lmer(RT~expt*Cond*cue_valid + (1|subj), data=ds))
+```
+
+This model gives the same effect as the previous model, but also:
+1) RT was faster on valid trials in Expt 1 than invalid trials in PB condition, confirming the results of Expt 1 (see the sanity check model above),
+2) but this effect vanished in the No Blink condition
+3) and *reversed* in Expt 2: the slope is now positive (~17 ms), implying IOR across blink conditions.
+
+# Visualization
+
+## Comparing Both Experiments
+
+```{r, fig.width=5.5, fig.height=2.5}
+sumss = ddply(ds, .(subj, expt, Cond, CueValid), summarise, RT=median(RT))
+p = ggplot(data=sumss, aes(x=Cond, y=RT, fill=CueValid)) + 
+    geom_boxplot() + facet_grid(.~expt) + xlab('Eye Blink Condition') + 
+    ylab('RT (ms)') + theme_bw() + 
+    # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, ) + 
+    theme(panel.grid.minor=element_blank(), 
+          plot.title = element_text(hjust = 0.5)) + ggtitle('Experiments 1 & 2 Comparison')
+plot(p)
+pdf('eb_box_expts1-2.pdf', width=5.5, height=2.5)
+plot(p)
+dev.off()
+```
