@@ -44,9 +44,11 @@ dsa3 = read.csv(paste(cloud_dir, 'eb/an/consolidated/dsa3.csv', sep='/'))
 
 ```{r}
 summary(ds1$ctoa)
+ds1$targ_bin = NA
 ds1$targ_bin[ds1$ctoa < 700] = 'Early Target'
 ds1$targ_bin[ds1$ctoa > 835] = 'Middle Target'
 print(ddply(ds1, .(targ_bin), summarise, num=length(targ_bin)))
+ds1 = ds1[!is.na(ds1$targ_bin),]
 ```
 
 ```{r}
@@ -110,16 +112,22 @@ summary(lmer(RT~expt*Cond*cue_valid + (1|subj), data=ds))
 
 ## Valid / Invalid separately
 
-```{r, fig.width=7.5, fig.height=5.5}
+```{r}
 sumss = ddply(ds, .(subj, expt, Cond, CueValid, targ_bin), summarise, RT=median(RT))
+## Reordering factor levels for visualization:
+sumss$targ_bin = factor(sumss$targ_bin, c('Early Target','Middle Target','Late Target'))
+sumss$Cond = factor(sumss$Cond, c('NoBlink','Artificial','Prompted'))
+```
+
+```{r, fig.width=7.5, fig.height=5.5}
 p = ggplot(data=sumss, aes(x=targ_bin, y=RT, fill=CueValid)) + 
     geom_boxplot() + facet_grid(Cond~expt) + xlab('Target CTOA') + 
     ylab('RT (ms)') + theme_bw() + 
     # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, ) + 
     theme(panel.grid.minor=element_blank(), 
-          plot.title = element_text(hjust = 0.5)) + ggtitle('Experiments 2 & 3 Comparison')
+          plot.title = element_text(hjust = 0.5)) + ggtitle('Experiment Comparison')
 plot(p)
-pdf('eb_box_expts2-3.pdf', width=7.5, height=5.5)
+pdf('eb_all_valinv.pdf', width=7.5, height=5.5)
 plot(p)
 dev.off()
 ```
@@ -143,22 +151,25 @@ head(ctoa_adv)
 # plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
 ```
 
-
-## Plotting the cueing advantage
-```{r, fig.width=8.5, fig.height=4.5, results="hide"}
+```{r}
+## Reordering factor levels for visualization:
 ctoa_adv$targ_bin = factor(ctoa_adv$targ_bin,
                            c('Early Target','Middle Target','Late Target')) #this works for lm
 ctoa_adv$Cond = factor(ctoa_adv$Cond,
                            c('NoBlink','Artificial','Prompted')) #this works for lm
+```
+
+## Plotting the cueing advantage
+```{r, fig.width=8.5, fig.height=4.5, results="hide"}
 p = ggplot(data=ctoa_adv, aes(x=targ_bin, y=RT, fill=Cond)) + 
     geom_boxplot() + facet_grid(.~expt) + xlab('Target CTOA') + 
     ylab('RT (ms)') + theme_bw() + ylim(-180, 180) +
     # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, ) + 
     theme(panel.grid.minor=element_blank(), 
-          plot.title = element_text(hjust = 0.5)) + ggtitle('Experiments 2 & 3 Comparison')
+          plot.title = element_text(hjust = 0.5)) + ggtitle('Experiment Comparison')
 p = plot_themefy(p)
 plot(p)
-pdf('eb_expts2-3_adv.pdf', width=7.5, height=4.5)
+pdf('eb_all_adv.pdf', width=7.5, height=4.5)
 plot(p)
 dev.off()
 ```
