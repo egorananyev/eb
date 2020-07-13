@@ -144,16 +144,16 @@ ctoa_adv$Cond = factor(ctoa_adv$Cond,
 ```
 
 ## Plotting the cueing advantage
-```{r, fig.width=8.5, fig.height=3.5, results="hide"}
+```{r, fig.width=8.5, fig.height=3.0, results="hide"}
 p = ggplot(data=ctoa_adv, aes(x=targ_bin, y=RT, fill=Cond)) + 
-    geom_boxplot() + facet_grid(.~expt) + xlab('Target CTOA') + 
-    ylab('RT (ms)') + theme_bw() + ylim(-180, 180) +
+    geom_boxplot(lwd=0.3, outlier.size=0.8) + facet_grid(.~expt) + xlab('Target CTOA') + 
+    ylab('RT (ms)') + theme_bw() + ylim(-102, 102) +
     # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, ) + 
     theme(panel.grid.minor=element_blank(), 
           plot.title = element_text(hjust = 0.5)) + ggtitle('Experiment Comparison')
 p = plot_themefy(p)
 plot(p)
-pdf('eb_all_adv.pdf', width=7.5, height=3.5)
+pdf('eb_all_adv.pdf', width=7.5, height=3.0)
 plot(p)
 dev.off()
 ```
