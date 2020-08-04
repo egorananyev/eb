@@ -3,9 +3,9 @@
 # 2019-01-12
 
 # Getting the data directory
-get_dir = function(dropbox_dir, eb, cue, subj, cond, sess){
-    cond_dir = paste(paste0(dropbox_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
-    if(eb=='1'){
+get_dir = function(cloud_dir, eb, cue, subj, cond, sess){
+    cond_dir = paste(paste0(cloud_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
+    if(!eb=='3'){
         this_sess = paste0('sess-', as.character(sess))
     } else {
         this_sess = paste0('block-', as.character(sess))

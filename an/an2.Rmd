@@ -26,23 +26,24 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 out=F
-# options(width=100)
+options(width=100)
 library(plyr)
 library(dplyr)
 library(ggplot2)
 library(lme4)
 library(lmerTest)
 library(reshape)
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
-if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='C:/gd/' }
-if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
-source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
-source(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+cloud_dir = 'C:/gd/'
+if(computer == 'shocky' || computer == 'toshi'){ prog_dir = 'C:/Users/Egor/Prog/' }
+if(computer == 'acer'){ prog_dir = 'C:/Users/egora/Prog/' }
+# source(paste0(cloud_dir, 'Prog/eb/an/funs_an/BF_t.R'))
+# source(paste0(cloud_dir, 'Prog/eb/an/funs_an/BF_U.R'))
 library(R.utils)
-sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
-source(paste(dropbox_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
-ds = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/ds2.csv', sep='/'))
-dsa = read.csv(paste(dropbox_dir, 'Projects/eb/eb/an/consolidated/dsa2.csv', sep='/'))
+sourceDirectory(paste0(prog_dir, 'eb/an/funs_an'))
+source(paste0(cloud_dir, 'Prog/R/myFunctions/pvalfn.R'))
+ds = read.csv(paste0(prog_dir, 'Projects/eb/eb/an/consolidated/ds2.csv'))
+dsa = read.csv(paste0(prog_dir, 'Projects/eb/eb/an/consolidated/dsa2.csv'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))

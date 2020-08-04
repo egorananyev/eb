@@ -25,9 +25,9 @@ computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 debug = F
 library(plyr)
 library(dplyr)
-if(computer == 'shocky' || computer == 'toshi'){ dropbox_dir='/Users/Egor/Dropbox/' }
-if(computer == 'acer'){ dropbox_dir='/Users/egora/Dropbox/' }
-all_data_dir = paste0(dropbox_dir, 'Projects/eb/data/eb2/')
+if(computer == 'shocky' || computer == 'toshi'){ prog_dir='/Users/Egor/Prog/' }
+if(computer == 'acer'){ prog_dir='/Users/egora/Prog/' }
+all_data_dir = paste0(prog_dir, 'eb/data/eb2/')
 conds = c('cond-a', 'cond-c', 'cond-v')
 cue_conds = c('cp', 'cu')  # cue predictive and unpredictive
 df = data.frame()
