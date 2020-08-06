@@ -21,15 +21,27 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
 debug = F
 library(plyr)
 library(dplyr)
-if(computer == 'shocky' || computer == 'toshi'){ prog_dir='/Users/Egor/Prog/' }
-if(computer == 'acer'){ prog_dir='/Users/egora/Prog/' }
-all_data_dir = paste0(prog_dir, 'eb/data/eb2/')
+library(R.utils)
+if(computer == 'toshi') {
+  cloud_dir = 'C:/Users/Egor/Google Drive/'
+  prog_dir = 'C:/Users/Egor/Prog/'
+  } else {
+  cloud_dir = 'C:/gd/' 
+  prog_dir = 'C:/Users/egora/Prog/'
+  }
+all_data_dir = paste0(cloud_dir, 'Projects/eb/data/eb2/')
+# if(computer == 'shocky' || computer == 'toshi'){ prog_dir='/Users/Egor/Prog/' }
+# if(computer == 'acer'){ prog_dir='/Users/egora/Prog/' }
+sourceDirectory(paste0(prog_dir, 'eb/an/funs_an'))
 conds = c('cond-a', 'cond-c', 'cond-v')
 cue_conds = c('cp', 'cu')  # cue predictive and unpredictive
+```
+
+```{r}
 df = data.frame()
 et = data.frame()
 excl = data.frame()
@@ -51,7 +63,7 @@ for(cur_cue_cond in cue_conds){
       # cur_sess = sesss[1]  # temp
       for(cur_sess in sesss){
         cur_sess_dir = paste(cur_cond_dir, cur_sess, sep='/')
-        # print(cur_sess_dir)
+        print(cur_sess_dir)
         cur_df = read.csv(paste(cur_sess_dir, 'beh_out.csv', sep='/'))
         # Making sure 'cue_pred' column exists; if not, writing it in:
         if(!'cue_pred' %in% colnames(cur_df)){
@@ -113,8 +125,6 @@ ds = df
 short_rt_cutoff = 0.2
 long_rt_cutoff = 1
 # Sourcing functions that will help clean the data, including ds_ops.R, etc.
-library(R.utils)
-sourceDirectory(paste(dropbox_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
 cols_to_include = c('subj', 'cue_pred', 'cond', 'sess', 'trial')
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt<short_rt_cutoff, cols_to_include]

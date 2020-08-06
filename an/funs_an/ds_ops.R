@@ -58,6 +58,14 @@ ds_vars = function(ds, ctoa_bin_nof){
 
 # Merging the behavioral data with the eye tracking data:
 ds_et_merge = function(et, ds){
+  # For experiments 2 and above, 'block' is called 'sess'
+  if(as.character(unique(ds$exp_name)) != 'eb1'){
+    sess_str = 'sess'
+  } else {
+    sess_str = 'block'
+  }
+  # Actually... it looks like the thing is *always* called 'sess'... I'm confused:
+  sess_str = 'sess'
   # For analyzing eye blink parameters alongside behavioral data, only prompted blink cond is meaningful:
   et_filt = et[et$cond!='c',]
   # (This could have been done at the input stage, but I may need post-trial blinks at some point.)
@@ -71,16 +79,18 @@ ds_et_merge = function(et, ds){
   # ( et_filt2[et_filt2$subj==3 & et_filt2$block==1 & et_filt2$cond=='v' & et_filt2$cue_pred==1 & et_filt2$trial==11,] )
   
   # Also excluding trials with more than one blink in the above time frame:
-  num_blanks = ddply(et_filt2, .(subj, cue_pred, cond, block, trial), 
+  # num_blanks = ddply(et_filt2, .(subj, cue_pred, cond, block, trial), 
+                     # summarise, num_blanks = length(trial))
+  num_blanks = ddply(et_filt2, c('subj', 'cue_pred', 'cond', sess_str, 'trial'), 
                      summarise, num_blanks = length(trial))
   et_filt3 = anti_join(et_filt2, num_blanks[num_blanks$num_blanks>1,],
-                      by=c('subj', 'cue_pred', 'cond', 'block', 'trial'))
+                      by=c('subj', 'cue_pred', 'cond', sess_str, 'trial'))
   # CHECK: Based on the above filter, the following number of blanks (rows) should have been removed:
   # sum(num_blanks[num_blanks$num_blanks>1,'num_blanks'])  # should be the same as:
   # nrow(et_filt2) - nrow(et_filt3)
   
   # Merging:
-  ds = merge(ds[ds$cond!='c',], et_filt3, by=c('subj', 'cue_pred', 'block', 'trial', 'cond'))
+  ds = merge(ds[ds$cond!='c',], et_filt3, by=c('subj', 'cue_pred', sess_str, 'trial', 'cond'))
   return(ds)
 }
 

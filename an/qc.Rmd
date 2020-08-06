@@ -22,16 +22,16 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '2'
-subj = 'subj-25'
-cond = 'cond-v'
+subj = 'subj-18'
+cond = 'cond-a'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 4
+block = 3
 debug = F
 included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
 # if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
 # if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 if(computer=='shocky' || computer=='acer'){
@@ -39,6 +39,10 @@ if(computer=='shocky' || computer=='acer'){
   prog_dir = 'C:/Users/egora/'
 }
 if(computer=='station3'){ cloud_dir = '/home/station3/Desktop/Egor/Dropbox/' }
+if(computer == 'toshi') {
+  prog_dir = 'C:/Users/Egor/'
+  cloud_dir = 'C:/Users/Egor/Google Drive/'
+}
 library(R.utils)
 library(plyr)
 # sourceDirectory(paste0(cloud_dir, 'Projects/eb/eb/an/funs_qc'))
