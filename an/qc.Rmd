@@ -31,7 +31,7 @@ included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 # if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
 # if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 if(computer=='shocky' || computer=='acer'){

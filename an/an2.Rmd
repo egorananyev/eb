@@ -25,7 +25,7 @@ code.r{
 
 # Data input and parsing
 ```{r set-options, message=F}
-out=F
+out=T
 options(width=100)
 library(plyr)
 library(dplyr)
@@ -33,7 +33,7 @@ library(ggplot2)
 library(lme4)
 library(lmerTest)
 library(reshape)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer == 'shocky' || computer == 'toshi'){ 
   prog_dir = 'C:/Users/Egor/Prog/' 
 }
@@ -63,15 +63,24 @@ cue_valid_name = 'Cue Validity'
 
 
 ## All-data RT plot
-```{r, fig.width=8.5, fig.height=5.5}
+```{r, fig.width=8.5, fig.height=3.5}
 ## Heavy smoothing (gam)
-p = ggplot(data=ds, aes(x=ctoa, y=RT, linetype=CueValid, color=Cond)) + 
+ds_temp = ds
+ds_temp$CueValid = factor(ds_temp$CueValid, c('Valid','Invalid'))
+p = ggplot(data=ds_temp, aes(x=ctoa, y=RT, linetype=CueValid, color=Cond)) + 
     geom_smooth(method='gam', alpha=0.15, aes(fill=Cond), formula=y~s(x, bs="cs")) +
     xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(.~Cond) + guides(alpha=F) +
     theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
-p = plot_themefy(p) + theme(legend.position='none')
-if(out){outpdf('eb2_rt~ctoa_gam', w=8, h=2)}
+p = p + guides(linetype=guide_legend(title=cue_valid_name, 
+                                                   override.aes=list(col='black')),
+                             color=F, alpha=F, fill=F)
+p = plot_themefy(p)
+# + theme(legend.position='none')
+if(out){outpdf('eb2_rt~ctoa_gam', w=8, h=3)}
 plot(p)
+```
+
+```{r, fig.width=8.5, fig.height=5.5}
 ## Light smoothing (loess with a small span)
 p = ggplot(data=ds, aes(x=ctoa, y=RT, color=CueValid)) + 
     geom_smooth(method='loess', alpha=0.15, aes(fill=CueValid), span=0.15) +
@@ -146,7 +155,7 @@ pvalfn(lmer(RT~cue_valid*ctoa0_s*Cond + (1|subj), data=ds))
 # pvalfn(lmer(RT~cue_valid_c*ctoa_s*Cond + (1|subj), data=ds))
 ```
 
-No validity effect for a continuous CTOA, although there is a marginal interaction between validity and CTOA, implying a slight facilitation at later CTOAs.
+Validly cued targets overall take longer to respond to overall, although there is a slight facilitation at later CTOAs.
 
 
 ### Short CTOAs only
