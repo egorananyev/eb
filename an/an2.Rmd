@@ -25,8 +25,8 @@ code.r{
 
 # Data input and parsing
 ```{r set-options, message=F}
-out=T
-options(width=100)
+out=F
+# options(width=100)
 library(plyr)
 library(dplyr)
 library(ggplot2)
@@ -52,7 +52,15 @@ ds = read.csv(paste0(prog_dir, 'eb/an/consolidated/ds2.csv'))
 dsa = read.csv(paste0(prog_dir, 'eb/an/consolidated/dsa2.csv'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
-ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
+ds$CondPart = 'No Blink'
+ds$CondPart[ds$Cond=='Artificial'] = 'Artificial'
+ds$CondPart[ds$Cond=='Prompted'] = 'Prompted'
+ds$CondPart = factor(ds$CondPart, c('No Blink', 'Artificial', 'Prompted'))
+dsa$CondPart = 'No Blink'
+dsa$CondPart[dsa$Cond=='Artificial'] = 'Artificial'
+dsa$CondPart[dsa$Cond=='Prompted'] = 'Prompted'
+dsa$CondPart = factor(dsa$CondPart, c('No Blink', 'Artificial', 'Prompted'))
+dsa$CondFull = factor(dsa$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
 ds$ctoa3 = factor(ds$ctoa3, c('Short CTOA','Medium CTOA','Long CTOA'))
 dsa$ctoa3 = factor(dsa$ctoa3, c('Short CTOA','Medium CTOA','Long CTOA'))
 cue_valid_name = 'Cue Validity'
@@ -67,16 +75,33 @@ cue_valid_name = 'Cue Validity'
 ## Heavy smoothing (gam)
 ds_temp = ds
 ds_temp$CueValid = factor(ds_temp$CueValid, c('Valid','Invalid'))
-p = ggplot(data=ds_temp, aes(x=ctoa, y=RT, linetype=CueValid, color=Cond)) + 
-    geom_smooth(method='gam', alpha=0.15, aes(fill=Cond), formula=y~s(x, bs="cs")) +
-    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(.~Cond) + guides(alpha=F) +
+p = ggplot(data=ds_temp, aes(x=ctoa, y=RT, linetype=CueValid, color=CondPart)) + 
+    geom_smooth(method='gam', alpha=0.20, aes(fill=CondPart), formula=y~s(x, bs="cs")) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(.~CondPart) + 
     theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
-p = p + guides(linetype=guide_legend(title=cue_valid_name, 
-                                                   override.aes=list(col='black')),
-                             color=F, alpha=F, fill=F)
 p = plot_themefy(p)
-# + theme(legend.position='none')
-if(out){outpdf('eb2_rt~ctoa_gam', w=8, h=3)}
+p = p + 
+  guides(linetype=guide_legend(title=cue_valid_name, override.aes=list(col='black')),
+         color=F, alpha=F, fill=F) +
+  theme(legend.position='top')
+if(out){outpdf('eb2_rt~ctoa_gam', w=3.5, h=2)}
+plot(p)
+```
+
+```{r, fig.width=3.5, fig.height=15}
+## Heavy smoothing (gam)
+ds_temp = ds
+ds_temp$CueValid = factor(ds_temp$CueValid, c('Valid','Invalid'))
+p = ggplot(data=ds_temp, aes(x=ctoa, y=RT, linetype=CueValid, color=CondPart)) + 
+    geom_smooth(method='gam', alpha=0.20, aes(fill=CondPart), formula=y~s(x, bs="cs")) +
+    xlab('Cue-to-Target Asynchrony (ms)') + ylab('RT (ms)') + facet_grid(subj~CondPart) + 
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+p = p + 
+  guides(linetype=guide_legend(title=cue_valid_name, override.aes=list(col='black')),
+         color=F, alpha=F, fill=F) +
+  theme(legend.position='top')
+if(out){outpdf('eb2_rt~ctoa_gam-indiv', w=3.5, h=15)}
 plot(p)
 ```
 
@@ -157,6 +182,86 @@ pvalfn(lmer(RT~cue_valid*ctoa0_s*Cond + (1|subj), data=ds))
 
 Validly cued targets overall take longer to respond to overall, although there is a slight facilitation at later CTOAs.
 
+
+#### Raw data & fits together
+
+```{r}
+## Computing the average CTOA (in ms) of the three CTOA bins:
+ctoa_vals = ddply(ds, .(ctoa3), summarize, ctoa_x = mean(ctoa))
+ds_m = ddply(ds, .(Cond, CueValid, ctoa3), summarize, RT_actual=mean(RT))
+ds_m = merge(ds_m, ctoa_vals, by='ctoa3')
+## A slight offset for the average CTOA to represent the categorical "cue validity" variable:
+ms_offset = 30  # in ms
+ds_m$ctoa_ave = ds_m$ctoa_x - (ms_offset/2)
+ds_m$ctoa_ave[ds_m$CueValid=='Valid'] = ds_m$ctoa_x[ds_m$CueValid=='Valid'] + ms_offset
+print(ds_m)
+```
+
+```{r}
+## Generating the linear model for the graph with CTOA==0 being the actual zero (aot earliest CTOA):
+m = pvalfn(lmer(RT~cue_valid*ctoa*Cond + (1|subj), data=ds))
+print(m)
+```
+
+```{r}
+## Putting in the linear model predictions into the <ds_m> data set:
+m_coef = as.numeric(m$estm)
+ds_m$RT_pred = m_coef[1] + 
+               m_coef[2] * as.numeric(ds_m$CueValid=='Valid') +
+               m_coef[3] * ds_m$ctoa_x +
+               m_coef[6] * as.numeric(ds_m$CueValid=='Valid') * ds_m$ctoa_x
+print(ds_m)
+```
+
+```{r}
+## Two (failed) attempts at visualizing the effects through existing packages:
+# library(jtools)
+# effect_plot(lm(RT~cue_valid*ctoa0_s*Cond, data=ds), pred=ctoa0_s, interval=T)
+# confint(m)
+# library(sjPlot)
+# library(sjmisc)
+# fit = lmer(RT~cue_valid*ctoa0_s*Cond + (1|subj), data=ds)
+# plot_model(fit, type='slope')
+```
+
+```{r}
+## The numeric CTOAs will allow placing subject averages side-by-side with model fits.
+##
+## Getting a by-subject summary of RTs:
+ds_fit = ddply(ds, .(subj, Cond, CueValid, ctoa3), summarize, RT_subj_mean = mean(RT))
+## Merging the two above data sets to have the numeric CTOAs attached to the bins:
+ds_fit = merge(ds_fit, ctoa_vals, by='ctoa3')
+ds_fit$ctoa_ave = ds_fit$ctoa_x
+ds_fit$ctoa_ave = ds_fit$ctoa_ave - (ms_offset/2)
+ds_fit$ctoa_ave[ds_fit$CueValid=='Valid'] = ds_fit$ctoa_ave[ds_fit$CueValid=='Valid'] + ms_offset
+print(ds_fit)
+```
+
+```{r, fig.width=7, fig.height=3.5}
+p = ggplot(ds_fit, aes(x=ctoa_ave, y=RT_subj_mean, color=CueValid)) +
+    # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, fill='white') + 
+    geom_point() +
+    geom_line(data=ds_m, aes(x=ctoa_x, y=RT_pred, color=CueValid), size=1) +
+    facet_grid(.~Cond) + xlab('CTOA (ms)') + ylab('Reaction Time') +
+    guides(color=guide_legend(title='Cue Validity'))
+p = plot_themefy(p)
+if(out){outpdf('eb2_pred&data', w=7, h=3.5)}
+print(p)
+```
+
+#### Boxplots
+
+```{r, fig.width=7, fig.height=4.5}
+p = ggplot(ds_fit, aes(x=factor(ctoa_x), y=RT_subj_mean, color=CueValid)) +
+    # geom_dotplot(binaxis='y', stackdir='center', dotsize=2, binwidth=3, fill='white') + 
+    geom_boxplot(aes(color=CueValid)) +
+    # geom_line(data=ds_m, aes(x=ctoa_x, y=RT_pred, color=CueValid), size=1) +
+    facet_grid(.~Cond) + xlab('CTOA (ms)') + ylab('Reaction Time') +
+    guides(color=guide_legend(title='Cue Validity'))
+p = plot_themefy(p)
+if(out){outpdf('eb2_box', w=7, h=3.5)}
+print(p)
+```
 
 ### Short CTOAs only
 
@@ -586,14 +691,42 @@ print(p)
 ```{r, fig.width=5.5, fig.height=4}
 ## Plotting individual slopes + an average slope
 p = ggplot(dsa, aes(x=blink_dur_ms, y=RT)) + #geom_point(aes(color=factor(subj))) + 
-  geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
-                                            alpha=.01), se=F) +
+  # geom_line(stat='smooth', method='lm', aes(linetype=factor(CueValid), color=factor(subj), 
+  #                                           alpha=.01), se=F) +
   geom_line(stat='smooth', method='lm', size=1, aes(linetype=factor(CueValid))) +
-  facet_grid(Cond~ctoa3) + ylim(250,450) +
+  facet_grid(Cond~ctoa3) + #ylim(250,450) +
   xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
   guides(linetype=guide_legend(title=cue_valid_name), color=F, alpha=F) + theme_bw()
 if(out){outpdf('eb2_rt~bdur-indiv_slopes_2', w=7, h=3, s=T)}
 suppressWarnings(plot(p))
+```
+
+```{r, fig.width=5.5, fig.height=4}
+## Plotting the average slopes
+p = ggplot(dsa, aes(x=blink_dur_ms, y=RT)) + #geom_point(aes(color=factor(subj))) + 
+  geom_line(stat='smooth', method='lm', size=1, aes(color=factor(CueValid))) +
+  facet_grid(Cond~ctoa3) + xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)')+
+  guides(color=guide_legend(title=cue_valid_name), alpha=F) + theme_bw()
+p = plot_themefy(p)
+if(out){outpdf('eb2_rt~bdur-ave_slopes', w=7, h=3, s=T)}
+suppressWarnings(plot(p))
+```
+
+```{r, fig.width=8.5, fig.height=3.5}
+## Heavy smoothing (gam)
+ds_temp = dsa
+ds_temp$CueValid = factor(ds_temp$CueValid, c('Valid','Invalid'))
+p = ggplot(data=ds_temp, aes(x=blink_dur_ms, y=RT, linetype=CueValid, color=CondPart)) + 
+    geom_smooth(method='gam', alpha=0.20, aes(fill=CondPart), formula=y~s(x, bs="cs")) +
+    xlab('Blink Duration (ms)') + ylab('Reaction Time (ms)') + facet_grid(CondPart~ctoa3) + 
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5))
+p = plot_themefy(p)
+p = p + 
+  guides(linetype=guide_legend(title=cue_valid_name, override.aes=list(col='black')),
+         color=F, alpha=F, fill=F) +
+  theme(legend.position='top')
+if(out){outpdf('eb2_rt~bdur&ctoa_gam', w=3.5, h=2)}
+plot(p)
 ```
 
 ```{r}
@@ -616,6 +749,11 @@ pvalfn(lmer(RT~blink_dur100*cue_valid*Cond*ctoa3 + (1|subj), data=dsa))
 
 # Blink latency
 
+## Raw
+
+```{r}
+pvalfn(lmer(RT~blat*cue_valid*Cond + (1|subj), data=dsa))
+```
 
 ## Inter-individual
 

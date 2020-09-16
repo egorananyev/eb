@@ -31,7 +31,13 @@ plot_themefy = function(p_in){
   cb_palette = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", 
                  "#CC79A7")
   p_out = p_in + theme_bw() + scale_fill_manual(values=cb_palette) +
-    scale_color_manual(values=cb_palette)
+    scale_color_manual(values=cb_palette) + 
+    theme(panel.grid.minor.x=element_blank(), panel.grid.minor.y=element_blank(),
+       axis.text=element_text(size=8), axis.title=element_text(size=9),
+       legend.text=element_text(size=8), legend.title=element_text(size=9),
+       legend.key = element_blank(), legend.margin=margin(t=-.04, unit='in'),
+       legend.background = element_rect(fill='transparent'),
+       plot.title=element_text(face='bold'))
   return(p_out)
 }
 

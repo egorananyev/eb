@@ -34,17 +34,23 @@ library(lme4)
 library(lmerTest)
 # library(reshape2)
 computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
-# if(computer == 'shocky' || computer == 'toshi'){ cloud_dir='/Users/Egor/Dropbox/' }
-if(computer=='shocky' || computer=='acer'){ cloud_dir='C:/gd/' }
-# if(computer == 'acer'){ cloud_dir='/Users/egora/Dropbox/' }
-source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_t.R', sep='/'))
-source(paste(cloud_dir, 'Projects/eb/eb/an/funs_an/BF_U.R', sep='/'))
+if(computer == 'shocky' || computer == 'toshi'){ 
+  prog_dir = 'C:/Users/Egor/Prog/' 
+}
+if(computer == 'toshi') {
+  cloud_dir = 'C:/Users/Egor/Google Drive/'
+} else {
+  cloud_dir = 'C:/gd/'
+}
+if(computer == 'acer'){ prog_dir = 'C:/Users/egora/Prog/' }
+source(paste(prog_dir, 'eb/an/funs_an/BF_t.R', sep='/'))
+source(paste(prog_dir, 'eb/an/funs_an/BF_U.R', sep='/'))
 library(R.utils)
-sourceDirectory(paste(cloud_dir, 'Projects/eb/eb/an/funs_an', sep='/'))
+sourceDirectory(paste(prog_dir, 'eb/an/funs_an', sep='/'))
 source(paste(cloud_dir, 'Prog/R/myFunctions/pvalfn.R', sep=''))
 ## Data input
-ds = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/ds1.csv', sep='/'))
-dsa = read.csv(paste(cloud_dir, 'Projects/eb/eb/an/consolidated/dsa1.csv', sep='/'))
+ds = read.csv(paste(prog_dir, 'eb/an/consolidated/ds1.csv', sep='/'))
+dsa = read.csv(paste(prog_dir, 'eb/an/consolidated/dsa1.csv', sep='/'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))
@@ -105,6 +111,13 @@ pvalfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
 In other words, the facilitation only occurs in the blink (artificial *and* real) conditions.
 
 Double-checking with factored cue validity and predictiveness, the estimates are the same:
+
+```{r}
+# Reordering levels of Condition variable, such that No Blink condition is the reference:
+ds$Cond <- factor(ds$Cond, c('NoBlink','Artificial','Prompted')) #this works for lm
+# lmerfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+pvalfn(lmer(RT~Cond*cue_valid*cue_pred + (1|subj), data=ds))
+```
 
 ```{r}
 # Reordering levels of Condition variable, such that No Blink condition is the reference:

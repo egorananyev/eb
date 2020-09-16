@@ -33,7 +33,7 @@ library(dplyr)
 library(ggplot2)
 library(lme4)
 library(R.utils)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer == 'shocky' || computer == 'toshi'){ cloud_dir='C:/Users/Egor/Prog' }
 if(computer == 'acer'){ cloud_dir='C:/Users/egora/Prog' }
 source(paste(cloud_dir, 'eb/an/funs_an/BF_t.R', sep='/'))
@@ -55,9 +55,10 @@ dsa3 = read.csv(paste(cloud_dir, 'eb/an/consolidated/dsa3.csv', sep='/'))
 ## Only including the predictive cueing condition from Expt 1:
 ds1 = ds1[ds1$cue_pred == 1,]
 summary(ds1$ctoa)
-ds1$targ_bin = NA
-ds1$targ_bin[ds1$ctoa < 700] = 'Early'
-ds1$targ_bin[ds1$ctoa > 835] = 'Middle'
+# ds1$targ_bin = NA
+# ds1$targ_bin[ds1$ctoa < 820] = 'Early'
+# ds1$targ_bin[ds1$ctoa >= 835] = 'Middle'
+ds1$targ_bin = 'Early'
 print(ddply(ds1, .(targ_bin), summarise, num=length(targ_bin)))
 ## Excluding the NAs:
 ds1 = ds1[!is.na(ds1$targ_bin),]
@@ -67,9 +68,9 @@ ds1 = ds1[!is.na(ds1$targ_bin),]
 ## Binning CTOAs from the Expt 2 into early, mid, and late.
 ## This roughly corresponds to Expt 3's 600, 900, and 1200 ms CTOA levels from Expt 3.
 ds2$targ_bin = NA
-ds2$targ_bin[ds2$ctoa < 800] = 'Early'
-ds2$targ_bin[ds2$ctoa > 850 & ds2$ctoa < 950] = 'Middle'
-ds2$targ_bin[ds2$ctoa > 1150 & ds2$ctoa < 1250] = 'Late'
+ds2$targ_bin[ds2$ctoa <= 850] = 'Early'
+ds2$targ_bin[ds2$ctoa > 850 & ds2$ctoa <= 1050] = 'Middle'
+ds2$targ_bin[ds2$ctoa > 1050 & ds2$ctoa <= 1350] = 'Late'
 ## Only including binned target SOAs (without NA's that fall outside the binning ranges):
 ds2 = ds2[!is.na(ds2$targ_bin),]
 ds2$targ_bin = as.factor(ds2$targ_bin)
