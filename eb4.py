@@ -34,18 +34,13 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = False
-dummy_mode = False
+toshi = True
+dummy_mode = True
 debug = False
 drift_check = False
 # experiment variables:
 cue_delay_min = 300  # the time frame before the location/blink cue
 cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
-# blink_latency_min = 240  # these are in ms, because we need a random _integer_ in this range
-# blink_latency_max = 500
-# the time window for the blink - quite conservative - should include the whole blink, but is independent of
-# the blink start/end
-# blink_time_window = .3
 # display dimensions:
 if toshi:
     # dr = (576, 432)
@@ -63,6 +58,7 @@ background_color = [-.5, -.5, -.5]
 # cue:
 cue_size = 5
 cue_dur = .1  # shortened on 2019-06-11
+scue_dur = cue_dur  # will keep the spatial cue duration same as cue_dur for <eb4>
 cue_color = [-1, -1, -1]
 # target:
 targ_off_x = 8
@@ -70,11 +66,11 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'24', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'0', u'cond': u'', u'block': u'', u'soa': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
-exp_info['expt'] = '3'
+exp_info['expt'] = '4'
 if not dlg.OK:
     core.quit()  # user pressed cancel
 exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
@@ -88,11 +84,15 @@ if exp_name == 'eb1':
 elif exp_name == 'eb2':
     cue_pred = 1
     trial_n = 1  # due to many SOA levels, only a single iteration can be performed per condition per block
-elif exp_name == 'eb3' or exp_name == 'eb4':
+elif exp_name == 'eb3':
     cue_pred = 1
     trial_n = 5  # trials per condition row; 5 gives 40 trials (per block); 20 ~ 9 min
     soa = int(exp_info['soa'])
     # with 11 blocks, the above session should last 40-50 min.
+elif exp_name == 'eb4':
+    cue_pred = 1
+    trial_n = 2  # 2 trials per 24 conditions = 48 trials per block
+    soa = int(exp_info['soa'])
 
 # Assigning conditions:
 eye_tracking = True  # true by default
@@ -162,8 +162,10 @@ if not measure:
                 exp_conditions = importConditions('cond-files/cond_' + exp_name + '_cue_unpredictive.xlsx')
     elif exp_name == 'eb2':  # for experiments eb2 and 3, a single conditions file is taken:
         exp_conditions = importConditions('cond-files/cond_' + exp_name + '.xlsx')
-    elif exp_name == 'eb3' or exp_name == 'eb4':  # for eb3, SOA is determined by user input
+    elif exp_name == 'eb3':  # for eb3, SOA is determined by user input
         exp_conditions = importConditions('cond-files/cond_eb1_cue_predictive.xlsx')
+    elif exp_name == 'eb4':  # for eb4, CTOA is determined by the user, but the cue-to-cue delay is from the condfile
+        exp_conditions = importConditions('cond-files/cond_eb4.xlsx')
 else:
     exp_conditions = importConditions('cond-files/cond_eb1_m.xlsx')
 
@@ -259,8 +261,8 @@ fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, he
 bcue_box = visual.Rect(window, width=cue_size, height=cue_size, lineColor=cue_color)
 
 # A pitch (spatial) cue:
-scue_L = sound.backend_pyo.SoundPyo('A', secs=cue_dur, octave=2)
-scue_R = sound.backedn_pyo.SoundPyo('A', secs=cue_dur, octave=6)
+scue_lo = sound.Sound(value=200, secs=cue_dur, stereo=False)
+scue_hi = sound.Sound(value=1000, secs=cue_dur, stereo=False)
 
 # A circle target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(0, 5), fillColor=targ_color, lineColor=targ_color)
@@ -367,7 +369,7 @@ def exit_routine():
             data_columns = ['exp_name', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'trial_start', 'trial_end']
         else:
             data_columns = ['exp_name', 'cue_pred', 'subj', 'cond', 'block', 'trial_id', 'cue_delay', 'targ_right',
-                            'cue_valid', 'targ_soa', #'blink_latency',
+                            'scue_delay', 'cue_valid', 'targ_soa',
                             'shutter_dur', 'trial_start', 'trial_end', 'cue_rt', 'corr_resp', 'rt']
         pd.DataFrame.from_dict(output_mat, orient='index').to_csv(out_file_path, index=False, columns=data_columns)
         print('output file path is ' + out_file_path)
@@ -421,14 +423,9 @@ for trial in trials:
     ## Randomizing variables and assigning the conditions:
     cue_delay = np.random.randint(cue_delay_min, cue_delay_max + 1) / 1000
     if measure:
-        # blink_latency = blink_latency_max / 1000
         cond_str = ''
         this_targ_soa = 600 / 1000
     else:
-        # Randomize the duration of the post-cue fixation & converting to sec:
-        # blink_latency = np.random.randint(blink_latency_min,
-        #                                   blink_latency_max + 1) / 1000  # max value has to be one up
-
         # Target location:
         this_targ_loc = trial['targ_right'] * 2 - 1  # converting from binary to [-1, 1]
         if this_targ_loc > 0:
@@ -449,16 +446,31 @@ for trial in trials:
         # Cue validity:
         if trial['cue_valid']:
             print('valid cue')
-            if exp_name is not 'eb4':
-                bcue_box.pos = (targ_off_x * this_targ_loc, 0)
-            else:
+            if exp_name == 'eb4':
                 bcue_box.pos = (0, 0)
+                if this_targ_loc > 0:
+                    this_scue_pitch_hi = True  # right is higher-pitch
+                else:
+                    this_scue_pitch_hi = False  # left is lower-pitch
+            else:
+                bcue_box.pos = (targ_off_x * this_targ_loc, 0)
         else:
             print('invalid cue')
-            if exp_name is not 'eb4':
-                bcue_box.pos = (-targ_off_x * this_targ_loc, 0)
-            else:
+            if exp_name == 'eb4':
                 bcue_box.pos = (0, 0)
+                if this_targ_loc > 0:
+                    this_scue_pitch_hi = False  # left is lower-pitch
+                else:
+                    this_scue_pitch_hi = True  # right is higher-pitch
+            else:
+                bcue_box.pos = (-targ_off_x * this_targ_loc, 0)
+        #debug:
+        print('scue pitch high? = ' + str(this_scue_pitch_hi))
+
+        # Spatial cue delay (eb4 only):
+        if exp_name == 'eb4':
+            scue_delay = trial['scue_delay']
+            print('spatial cue delay:' + str(scue_delay))
 
         if shutters:
             # noinspection PyUnboundLocalVariable
@@ -473,7 +485,6 @@ for trial in trials:
             shutter_dur = 0
 
         # Condition string, to pass to the eye tracker, just in case:
-        # cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (blink_latency, trial['targ_right'], trial['cue_valid']))
         cond_str = ('latency=%s targ_right=%s cue_valid=%s' % (soa, trial['targ_right'], trial['cue_valid']))
 
     ## Starting the eye-tracking recording.
@@ -525,8 +536,11 @@ for trial in trials:
     #----------------------------------------------
     # Pre-targ frame loop
 
-    pretarg_frames = int(this_targ_soa * frame_rate)
+    pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
     cue_frames = range(int(cue_dur * frame_rate))
+    # scue_frames = range(int(scue_delay * frame_rate), int((scue_delay + scue_dur) * frame_rate))
+    scue_onset_frame = int(scue_delay * frame_rate)
+    scue_playing = False
 
     # The location/blink cue:
     event.clearEvents()
@@ -535,12 +549,21 @@ for trial in trials:
     if not dummy_mode:
         tracker.sendMessage('CUE_ONSET %.2f' % flip_time)
 
-    for pretarg_frame in range(pretarg_frames):
+    for pretarg_frame in pretarg_frames:
 
         flip_time = frame_routine()
 
         if pretarg_frame in cue_frames:
             bcue_box.draw()
+
+        if not scue_playing:
+            if pretarg_frame >= scue_onset_frame:
+                scue_playing = True
+                print('spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
+                if this_scue_pitch_hi:
+                    scue_hi.play()
+                else:
+                    scue_lo.play()
 
         # In both no-blink and shutters condition, registering the key response to cue:
         if noblink or shutters:
@@ -683,9 +706,9 @@ for trial in trials:
                                          'trial_id': n_trials_done,
                                          'cue_delay': cue_delay,
                                          'targ_right': trial['targ_right'],
+                                         'scue_delay': trial['scue_delay'],
                                          'cue_valid': trial['cue_valid'],
                                          'targ_soa': this_targ_soa,
-                                         # 'blink_latency': blink_latency,
                                          'shutter_dur': shutter_dur,
                                          'trial_start': trial_t_start,
                                          'trial_end': flip_time,
