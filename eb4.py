@@ -27,6 +27,7 @@ from psychopy.data import TrialHandler, importConditions
 from psychopy.core import wait
 import pandas as pd
 from datetime import datetime
+import math
 
 # Imports associated with the eye tracker:
 import pylink
@@ -39,8 +40,8 @@ dummy_mode = True
 debug = False
 drift_check = False
 # experiment variables:
-cue_delay_min = 300  # the time frame before the location/blink cue
-cue_delay_max = 500  # shortened from 800 to 500 ms on 2019-06-11
+cue_delay_min = 1000  # the time frame before the location/blink cue
+cue_delay_max = 1800  # shortened from 800 to 500 ms on 2019-06-11
 # display dimensions:
 if toshi:
     # dr = (576, 432)
@@ -261,8 +262,30 @@ fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, he
 bcue_box = visual.Rect(window, width=cue_size, height=cue_size, lineColor=cue_color)
 
 # A pitch (spatial) cue:
-scue_lo = sound.Sound(value=200, secs=cue_dur, stereo=False)
-scue_hi = sound.Sound(value=1000, secs=cue_dur, stereo=False)
+sample_rate = 22500
+freq_L = 200
+freq_R = 800
+bits = -16
+
+n_samples = int(round(cue_dur * sample_rate))
+buf_L = np.zeros((n_samples, 2))
+buf_R = np.zeros((n_samples, 2))
+max_sample = 1.0
+
+for s in range(n_samples):
+    t = float(s) / sample_rate  # time in seconds
+    val_L = max_sample * math.sin(2 * math.pi * freq_L * t)  # spans from -1 to 1
+    val_R = max_sample * math.sin(2 * math.pi * freq_R * t)  # spans from -1 to 1
+    # val = max_sample * val
+    buf_L[s][0] = val_L  # left
+    buf_L[s][1] = 0  # right
+    buf_R[s][0] = 0  # left
+    buf_R[s][1] = val_R  # right
+
+scue_lo = sound.Sound(value=buf_L, sampleRate=sample_rate, bits=bits)
+scue_hi = sound.Sound(value=buf_R, sampleRate=sample_rate, bits=bits)
+# scue_lo = sound.Sound(value=buf_L, secs=cue_dur, stereo=False)
+# scue_hi = sound.Sound(value=buf_R, secs=cue_dur, stereo=False)
 
 # A circle target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(0, 5), fillColor=targ_color, lineColor=targ_color)
@@ -536,10 +559,12 @@ for trial in trials:
     #----------------------------------------------
     # Pre-targ frame loop
 
-    pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
-    cue_frames = range(int(cue_dur * frame_rate))
-    # scue_frames = range(int(scue_delay * frame_rate), int((scue_delay + scue_dur) * frame_rate))
-    scue_onset_frame = int(scue_delay * frame_rate)
+    bcue_frames = range(int(cue_dur * frame_rate))
+    if not measure:
+        pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
+        scue_onset_frame = int(scue_delay * frame_rate)
+    else:
+        pretarg_frames = range(int((1.5 + this_targ_soa) * frame_rate))
     scue_playing = False
 
     # The location/blink cue:
@@ -553,10 +578,10 @@ for trial in trials:
 
         flip_time = frame_routine()
 
-        if pretarg_frame in cue_frames:
+        if pretarg_frame in bcue_frames:
             bcue_box.draw()
 
-        if not scue_playing:
+        if not scue_playing and not measure:
             if pretarg_frame >= scue_onset_frame:
                 scue_playing = True
                 print('spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
