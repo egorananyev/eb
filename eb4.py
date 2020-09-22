@@ -35,13 +35,13 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 
 ## Initial variables.
 # experiment modes:
-toshi = True
-dummy_mode = True
+toshi = False
+dummy_mode = False
 debug = False
 drift_check = False
 # experiment variables:
-cue_delay_min = 1000  # the time frame before the location/blink cue
-cue_delay_max = 1800  # shortened from 800 to 500 ms on 2019-06-11
+cue_delay_min = 500  # the time frame before the location/blink cue
+cue_delay_max = 1000  # shortened from 800 to 500 ms on 2019-06-11
 # display dimensions:
 if toshi:
     # dr = (576, 432)
@@ -185,7 +185,7 @@ else:
     trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
-exp_dir = '..' + os.sep + 'data' + os.sep + exp_name + os.sep + cue_dir
+exp_dir = '..' + os.sep + 'Dropbox' + os.sep + 'data' + os.sep + exp_name + os.sep + cue_dir
 if not os.path.exists(exp_dir):
     print('experiment directory does not exist')
     os.makedirs(exp_dir)
@@ -239,8 +239,8 @@ else:
     # I find it is a better practice to put things all under control in the experimental script instead.
     mon = monitors.Monitor('station3')  # , width=dd[0], distance=ds)
     # mon.setSizePix(dr)
-    print('----------------')
-    print(mon.getDistance())
+    # print('Monitor distance')
+    # print(mon.getDistance())
     window = visual.Window(dr, fullscr=True, monitor=mon, color=background_color, units='deg',
                            allowStencil=True, autoLog=False, screen=0, waitBlanking=False)
 
@@ -248,7 +248,7 @@ if toshi:
     frame_rate = 60
 else:
     frame_rate = window.getActualFrameRate()
-    if frame_rate < 100:
+    if frame_rate < 99:
         print('WARNING! The measured frame rate is lower than expected')
 print('frame rate: ' + str(frame_rate))
 
@@ -493,7 +493,7 @@ for trial in trials:
         # Spatial cue delay (eb4 only):
         if exp_name == 'eb4':
             scue_delay = trial['scue_delay']
-            print('spatial cue delay:' + str(scue_delay))
+            print('spatial cue delay: ' + str(scue_delay))
 
         if shutters:
             # noinspection PyUnboundLocalVariable
@@ -553,6 +553,7 @@ for trial in trials:
 
     # Fixation cross:
     fix_1_frames = int(cue_delay * frame_rate)
+    print('cue delay: ' + str(cue_delay))
     for fix_1_frame in range(fix_1_frames):
         flip_time = frame_routine()
 
