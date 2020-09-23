@@ -4,8 +4,12 @@
 
 # Getting the data directory
 get_dir = function(cloud_dir, eb, cue, subj, cond, sess){
-    cond_dir = paste(paste0(cloud_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
-    if(!eb=='3'){
+    if(eb=='4'){
+        cond_dir = paste(paste0(cloud_dir, 'data/eb', eb), cue, subj, cond, sep='/')
+    } else {
+        cond_dir = paste(paste0(cloud_dir, 'Projects/eb/data/eb', eb), cue, subj, cond, sep='/')
+    }
+    if(eb=='1' || eb=='2'){
         this_sess = paste0('sess-', as.character(sess))
     } else {
         this_sess = paste0('block-', as.character(sess))
