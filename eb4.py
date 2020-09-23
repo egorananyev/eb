@@ -1,5 +1,5 @@
 ###!/usr/bin/arch -i386 /usr/bin/python # -*- coding: utf-8 -*-
-from __future__ import print_function
+# from __future__ import print_function
 
 """
 The influence of eye blinks on attentional cueing.
@@ -18,7 +18,7 @@ LensOff = 'z' #both sides opaque
 AllOff = 'x'
 """
 
-from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
+# from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, core, event, gui, monitors, sound
 import numpy as np
 import os
@@ -28,6 +28,7 @@ from psychopy.core import wait
 import pandas as pd
 from datetime import datetime
 import math
+# import psychtoolbox as ptb
 
 # Imports associated with the eye tracker:
 import pylink
@@ -67,7 +68,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'0', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'2', u'cond': u'', u'block': u'', u'soa': u''}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -92,7 +93,7 @@ elif exp_name == 'eb3':
     # with 11 blocks, the above session should last 40-50 min.
 elif exp_name == 'eb4':
     cue_pred = 1
-    trial_n = 2  # 2 trials per 24 conditions = 48 trials per block
+    trial_n = 3  # 2 trials per 24 conditions = 48 trials per block; 3 => 72
     soa = int(exp_info['soa'])
 
 # Assigning conditions:
@@ -563,7 +564,13 @@ for trial in trials:
     bcue_frames = range(int(cue_dur * frame_rate))
     if not measure:
         pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
-        scue_onset_frame = int(scue_delay * frame_rate)
+        scue_onset_frame = int((scue_delay-.3) * frame_rate)
+        print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
+        # if this_scue_pitch_hi:
+        #     scue_hi.play(when=flip_time+scue_delay)
+        # else:
+        #     scue_lo.play(when=flip_time+scue_delay)
+        # print('DEBUG: Scheduled the sound replay.')
     else:
         pretarg_frames = range(int((1.5 + this_targ_soa) * frame_rate))
     scue_playing = False
@@ -586,6 +593,7 @@ for trial in trials:
             if pretarg_frame >= scue_onset_frame:
                 scue_playing = True
                 print('spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
+                print('DEBUG: audio tone latency = ' + str(flip_time))  # debug
                 if this_scue_pitch_hi:
                     scue_hi.play()
                 else:
@@ -659,6 +667,7 @@ for trial in trials:
 
         # Important to measure the flip time for accurate RT measurement just below:
         flip_time = frame_routine()
+        print('DEBUG: target latency = ' + str(flip_time))  # debug
 
         # Trial components pertaining to behavioural response:
         targ_resp_given = False
