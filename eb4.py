@@ -68,7 +68,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'2', u'cond': u'', u'block': u'', u'soa': u''}
+exp_info = {u'subj': u'0', u'cond': u'v', u'block': u'0', u'soa': u'300'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -564,7 +564,7 @@ for trial in trials:
     bcue_frames = range(int(cue_dur * frame_rate))
     if not measure:
         pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
-        scue_onset_frame = int((scue_delay-.3) * frame_rate)
+        scue_onset_frame = int((scue_delay) * frame_rate)
         print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
         # if this_scue_pitch_hi:
         #     scue_hi.play(when=flip_time+scue_delay)
