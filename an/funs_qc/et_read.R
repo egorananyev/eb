@@ -77,14 +77,19 @@ parse_samples = function(raw_data){
 }
 
 # Reading all once-per-trial events, including cue, blink latency, blink window, & response:
-parse_trials = function(raw_data, cond){
+parse_trials = function(raw_data, cond, eb){
     # Storing the start and end trials times:
     trials = data.frame(start=dfy(raw_data[grepl('TRIAL_START', raw_data)], c(3,5), 2),
                         end=dfy(raw_data[grepl('TRIAL_END', raw_data)], c(3,5), 2))
     trials$trial = as.numeric(rownames(trials))
-    # Adding cue onset time:
+    # Adding cue onset times:
     trials = cbind(trials, 
                    data.frame(cue_onset=dfy(raw_data[grepl('CUE_ONSET', raw_data)], c(3,5), 2)))
+    if(eb=='4' & cond!='cond-m'){
+        trials = cbind(trials, 
+                       data.frame(scue_onset=dfy(raw_data[grepl('SCUE_ONSET', raw_data)], c(3,5),
+                                                 2)))
+    }
     # Adding blink latency onset time:
     trials = cbind(trials, 
                    data.frame(blink_latency=dfy(raw_data[grepl('BLINK_LATENCY_ONSET', raw_data)],
@@ -104,11 +109,22 @@ parse_trials = function(raw_data, cond){
                        data.frame(blink_window=dfy(raw_data[grepl('TRIAL_RESPONSE', raw_data)], 
                                                     c(3,5), 2)))
         # Renaming columns to prettier variable names:
-        colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
-                             'trial_sample_end', 'trial_time_end', 'trial',
-                             'cue_sample', 'cue_time', 'blink_latency_sample', 'blink_latency_time',
-                             'blink_window_sample', 'blink_window_time', 'targ_sample', 'targ_time',
-                             'resp_sample', 'resp_time')
+        if(eb=='4'){
+            colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
+                                 'trial_sample_end', 'trial_time_end', 'trial',
+                                 'cue_sample', 'cue_time', 'scue_sample', 'scue_time',
+                                 'blink_latency_sample', 'blink_latency_time',
+                                 'blink_window_sample', 'blink_window_time',
+                                 'targ_sample', 'targ_time', 'resp_sample', 'resp_time')
+        } else {
+            colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 
+                                 'trial_sample_end', 'trial_time_end', 'trial',
+                                 'cue_sample', 'cue_time',
+                                 'blink_latency_sample', 'blink_latency_time',
+                                 'blink_window_sample', 'blink_window_time',
+                                 'targ_sample', 'targ_time', 'resp_sample', 'resp_time')
+            
+        }
     } else {
         # Renaming columns to prettier variable names:
         colnames(trials) = c('trial_sample_beg', 'trial_time_beg', 

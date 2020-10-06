@@ -59,7 +59,7 @@ samples$yr[is.na(samples$yr)] = 0
 samples$xr = (samples$xr - (1152/2))/33.87  # normalizing to 0 and converting to dva
 samples$yr = (samples$yr - (864/2))/33.87  # normalizing to 0 and converting to dva
 # Parsing once-per-trial events
-trials = parse_trials(raw_data, cond)
+trials = parse_trials(raw_data, cond, eb)
 # Labeling trials in the 'samples' data frame with trial numbers & associating samples w/ time
 samples = lab_samples(samples, trials)
 # Parsing blank events (may be more than one per trial)

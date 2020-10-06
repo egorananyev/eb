@@ -79,6 +79,9 @@ exp_info['time'] = datetime.now().strftime('%Y-%m-%d_%H%M')
 exp_name = 'eb' + exp_info['expt']
 print('experiment name is ' + exp_name)
 
+cue_pred = None
+trial_n = None
+soa = int(exp_info['soa'])
 if exp_name == 'eb1':
     # Predictiveness of the cue:
     cue_pred = int(exp_info['cue_pred'])
@@ -89,12 +92,10 @@ elif exp_name == 'eb2':
 elif exp_name == 'eb3':
     cue_pred = 1
     trial_n = 5  # trials per condition row; 5 gives 40 trials (per block); 20 ~ 9 min
-    soa = int(exp_info['soa'])
     # with 11 blocks, the above session should last 40-50 min.
 elif exp_name == 'eb4':
     cue_pred = 1
     trial_n = 3  # 2 trials per 24 conditions = 48 trials per block; 3 => 72
-    soa = int(exp_info['soa'])
 
 # Assigning conditions:
 eye_tracking = True  # true by default
@@ -152,6 +153,7 @@ else:  # for 'd' or 'v'
 ## Input and output
 
 # Condition file:
+exp_conditions = None
 if not measure:
     if exp_name == 'eb1':
         if exp_info['cond'] == 'd':
@@ -379,6 +381,7 @@ def open_shutters(dummy_mode_):
 def exit_routine():
     # attempting to close the goggles:
     print('Initiating the exit routine.')
+    # noinspection PyBroadException
     try:
         ser.write('z')
         print('Closed the goggles.')
@@ -444,6 +447,16 @@ for trial in trials:
     n_trials_done += 1
     print('======TRIAL#' + str(n_trials_done) + '======')
 
+    # Resetting variables:
+    this_scue_pitch_hi = None
+    scue_onset_frame = None
+    scue_delay = None
+    this_targ_soa = None
+    shutters_shut = None
+    shutters_opened = None
+    shutter_closing_time = None
+    shutter_dur = None
+
     ## Randomizing variables and assigning the conditions:
     cue_delay = np.random.randint(cue_delay_min, cue_delay_max + 1) / 1000
     if measure:
@@ -488,8 +501,7 @@ for trial in trials:
                     this_scue_pitch_hi = True  # right is higher-pitch
             else:
                 bcue_box.pos = (-targ_off_x * this_targ_loc, 0)
-        #debug:
-        print('scue pitch high? = ' + str(this_scue_pitch_hi))
+        print('scue pitch high? = ' + str(this_scue_pitch_hi))  # debug
 
         # Spatial cue delay (eb4 only):
         if exp_name == 'eb4':
@@ -558,7 +570,7 @@ for trial in trials:
     for fix_1_frame in range(fix_1_frames):
         flip_time = frame_routine()
 
-    #----------------------------------------------
+    # ----------------------------------------------
     # Pre-targ frame loop
 
     bcue_frames = range(int(cue_dur * frame_rate))
@@ -592,6 +604,8 @@ for trial in trials:
         if not scue_playing and not measure:
             if pretarg_frame >= scue_onset_frame:
                 scue_playing = True
+                if not dummy_mode:
+                    tracker.sendMessage('SCUE_ONSET %.2f' % flip_time)
                 print('spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
                 print('DEBUG: audio tone latency = ' + str(flip_time))  # debug
                 if this_scue_pitch_hi:
@@ -628,7 +642,7 @@ for trial in trials:
                         print(shutter_closing_time)
                         print(shutter_dur)
 
-    #----------------------------------------------
+    # ----------------------------------------------
     # Post-targ frame loop
     print('Post-target frame loop.')
     if not dummy_mode:
