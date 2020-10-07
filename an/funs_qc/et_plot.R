@@ -52,6 +52,12 @@ plot_qc = function(trial_samples, trial_blanks, this_trial, trial_sacc){
                       aes(xmin=cue_time-trial_time_beg, xmax=cue_time+.1-trial_time_beg, 
                           ymin=ylims[1], ymax=ylims[2]),
                       color='transparent', fill='orange', alpha=.3)
+    if(eb=='4' & cond!='cond-m'){
+        p = p + geom_rect(data=this_trial, inherit.aes=F, 
+                          aes(xmin=scue_time-trial_time_beg, xmax=scue_time+.1-trial_time_beg, 
+                              ymin=ylims[1], ymax=ylims[2]),
+                          color='transparent', fill='red', alpha=.3)
+    }
     # Marking the shutter on/off times:
     if(cond == 'cond-a'){
         p = p + geom_rect(data=this_trial, inherit.aes=F,
