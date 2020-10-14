@@ -408,6 +408,9 @@ def exit_routine():
     window.flip()
 
     if not dummy_mode:
+        # In case the EyeLink recording is ongoing, stopping the recording:
+        pylink.pumpDelay(100)
+        tracker.stopRecording()
         # EDF output:
         # close the EDF data file
         tracker.setOfflineMode()
