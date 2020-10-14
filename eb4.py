@@ -119,7 +119,8 @@ else:
         shutters = True
         if not dummy_mode:
             ser = serial.Serial('/dev/ttyACM0', 9600)
-            ser.write('c')  # both sides clear
+            # ser.write('c')  # both sides clear
+            ser.write(str.encode('c'))
         shutters_shut = False  # this keeps track of whether the shutters were shut
         shutters_opened = False  # this is an additional tracker for when the shutters were already closed on this trial
     if exp_info['cond'] == 'c':
@@ -362,7 +363,8 @@ def monitor_cue_resp(flip_time_, cue_rt_start_):
 def close_shutters(dummy_mode_):
     if not dummy_mode_:
         tracker.sendMessage('SHUTTER_START %.2f' % flip_time)
-        ser.write('z')
+        # ser.write('z')
+        ser.write(str.encode('z'))
     print('Closed the goggles.')
     shutters_shut_ = True
     return shutters_shut_
@@ -371,7 +373,8 @@ def close_shutters(dummy_mode_):
 def open_shutters(dummy_mode_):
     if not dummy_mode_:
         tracker.sendMessage('SHUTTER_END %.2f' % flip_time)
-        ser.write('c')
+        # ser.write('c')
+        ser.write(str.encode('c'))
     print('Opened the goggles.')
     shutters_shut_ = False
     return shutters_shut_
@@ -383,7 +386,8 @@ def exit_routine():
     # noinspection PyBroadException
     if shutters:
         try:
-            ser.write('z')
+            # ser.write('z')
+            ser.write(str.encode('z'))
             print('Closed the goggles.')
         except:
             print('Failed to close the goggles -- they might not have been used.')
