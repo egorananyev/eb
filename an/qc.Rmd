@@ -1,7 +1,7 @@
 ---
-title: "[eb1] Quality Control"
+title: "[eb4] Quality Control"
 author: "Egor Ananyev"
-date: "2019-01-04"
+date: "2020-10-14"
 output:
     html_document:
         toc: true
@@ -22,8 +22,8 @@ code.r{
 ```{r set-options, message=F}
 # options(width=100)
 eb = '4'
-subj = 'subj-02'
-cond = 'cond-v'
+subj = 'subj-00'
+cond = 'cond-m'
 cue = 'cp'  # cp/cu = predictive/unpredictive
 block = 1
 debug = F
@@ -31,7 +31,7 @@ included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
 # if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
 # if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
 if(computer=='shocky' || computer=='acer'){
@@ -39,7 +39,10 @@ if(computer=='shocky' || computer=='acer'){
   cloud_dir = 'C:/Users/egora/Dropbox/'  # when I'm processing during data collection
   prog_dir = 'C:/Users/egora/'
 }
-if(computer=='station3'){ cloud_dir = '/home/station3/Desktop/Egor/Dropbox/' }
+if(computer=='station3'){
+  prog_dir = '/home/station3/Desktop/Egor/'
+  cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
+}
 if(computer == 'toshi') {
   prog_dir = 'C:/Users/Egor/'
   cloud_dir = 'C:/Users/Egor/Google Drive/'
@@ -47,7 +50,11 @@ if(computer == 'toshi') {
 library(R.utils)
 library(plyr)
 # sourceDirectory(paste0(cloud_dir, 'Projects/eb/eb/an/funs_qc'))
-sourceDirectory(paste0(prog_dir, 'Prog/eb/an/funs_qc'))
+if(computer=='station3'){
+  sourceDirectory(paste0(prog_dir, 'eb/an/funs_qc'))
+} else {
+  sourceDirectory(paste0(prog_dir, 'Prog/eb/an/funs_qc'))
+}
 # Getting the data directory:
 data_dir = get_dir(cloud_dir, eb, cue, subj, cond, block)
 print(data_dir)
