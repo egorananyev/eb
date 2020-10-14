@@ -104,6 +104,7 @@ voluntary = False
 shutters = False
 measure = False
 noblink = False
+noblink_spacebar_recorded = False
 print('Condition: ' + exp_info['cond'])
 if exp_info['cond'] == 'm':
     measure = True
@@ -347,7 +348,7 @@ def frame_routine():
     return flip_time_
 
 ## Artificial blink condition:
-# Monitoring the 'spacebar' press in artificial blink condition
+# Monitoring the 'spacebar' press in artificial and no-blink conditions:
 def monitor_cue_resp(flip_time_, cue_rt_start_):
     space_key = event.getKeys(keyList=['space'])
     if len(space_key) > 0:
@@ -516,6 +517,7 @@ for trial in trials:
             scue_delay = trial['scue_delay']
             print('spatial cue delay: ' + str(scue_delay))
 
+        noblink_spacebar_recorded = False
         if shutters:
             # noinspection PyUnboundLocalVariable
             shutter_dur = np.random.normal(blink_dur_ave, blink_dur_std)
@@ -662,6 +664,14 @@ for trial in trials:
                         print(flip_time)
                         print(shutter_closing_time)
                         print(shutter_dur)
+
+        if noblink:
+            if not noblink_spacebar_recorded:
+                if cue_rt > 0:
+                    tracker.sendMessage('CUE_RESP_TIME %.2f' % flip_time)
+                    tracker.sendMessage('CUE_RT %.2f' % cue_rt)
+                    noblink_spacebar_recorded = True
+                    print('Sent cue RT to the eye tracker.')
 
     # ----------------------------------------------
     # Post-targ frame loop
