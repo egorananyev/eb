@@ -83,19 +83,17 @@ class EyeLinkCoreGraphicsPsychoPy(pylink.EyeLinkCustomDisplay):
 
         # image title & calibration instructions
         self.msgHeight = self.size[1]/20.0
-        self.title = visual.TextStim(self.display,'', height=self.msgHeight, color=[1,1,1],
-                                     pos = (0,-self.size[1]/2-self.msgHeight), wrapWidth=self.w, units='pix')
-        self.calibInst = visual.TextStim(self.display, alignHoriz='left',alignVert ='top', height=self.msgHeight, color=[1,1,1],
-                                        pos = (-self.w/2.0, self.h/2.0), units='pix',
-                                        text = '''
-        Enter: Show/Hide camera image
-        Left/Right: Switch camera view
-        C: Calibration
-        V: Validation
-        O: Start Recording
-        +=/-: CR threshold
-        Up/Down: Pupil threshold
-        Alt+arrows: Search limit''')
+        self.title = visual.TextStim(self.display, '', height=self.msgHeight, color=[1, 1, 1],
+                                     pos=(0, -self.size[1]/2-self.msgHeight), wrapWidth=self.w, units='pix')
+        self.calibInst = visual.TextStim(self.display, anchorHoriz='left', anchorVert='top', height=self.msgHeight,
+                                         color=[1, 1, 1], pos=(-self.w/2.0, self.h/2.0), units='pix',
+                                         text='Enter: Show/Hide camera image \n\
+                                               Left/Right: Switch camera view \n\
+                                               C: Calibration V: Validation\n\
+                                               O: Start Recording\n\
+                                               +=/-: CR threshold\n\
+                                               Up/Down: Pupil threshold\n\
+                                               Alt+arrows: Search limit')
         
         # lines for drawing cross hair etc.
         self.line = visual.Line(self.display, start=(0, 0), end=(0,0),

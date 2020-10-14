@@ -20,6 +20,7 @@ AllOff = 'x'
 
 # from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, core, event, gui, monitors, sound
+import psychtoolbox as ptb
 import numpy as np
 import os
 from subprocess import call  # for running shell commands from within Python
@@ -268,7 +269,7 @@ bcue_box = visual.Rect(window, width=cue_size, height=cue_size, lineColor=cue_co
 sample_rate = 22500
 freq_L = 200
 freq_R = 800
-bits = -16
+# bits = -16
 
 n_samples = int(round(cue_dur * sample_rate))
 buf_L = np.zeros((n_samples, 2))
@@ -285,8 +286,8 @@ for s in range(n_samples):
     buf_R[s][0] = 0  # left
     buf_R[s][1] = val_R  # right
 
-scue_lo = sound.Sound(value=buf_L, sampleRate=sample_rate, bits=bits)
-scue_hi = sound.Sound(value=buf_R, sampleRate=sample_rate, bits=bits)
+scue_lo = sound.Sound(value=buf_L, sampleRate=sample_rate)  # , bits=bits)
+scue_hi = sound.Sound(value=buf_R, sampleRate=sample_rate)  # , bits=bits)
 # scue_lo = sound.Sound(value=buf_L, secs=cue_dur, stereo=False)
 # scue_hi = sound.Sound(value=buf_R, secs=cue_dur, stereo=False)
 
