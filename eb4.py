@@ -287,8 +287,6 @@ for s in range(n_samples):
 
 scue_lo = sound.Sound(value=buf_L, sampleRate=sample_rate)  # , bits=bits)
 scue_hi = sound.Sound(value=buf_R, sampleRate=sample_rate)  # , bits=bits)
-# scue_lo = sound.Sound(value=buf_L, secs=cue_dur, stereo=False)
-# scue_hi = sound.Sound(value=buf_R, secs=cue_dur, stereo=False)
 
 # A circle target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(0, 5), fillColor=targ_color, lineColor=targ_color)
@@ -469,6 +467,10 @@ for trial in trials:
         cond_str = ''
         this_targ_soa = 600 / 1000
     else:
+
+        # Box (blink) cue delay:
+        print('blink cue delay: ' + str(cue_delay))
+
         # Target location:
         this_targ_loc = trial['targ_right'] * 2 - 1  # converting from binary to [-1, 1]
         if this_targ_loc > 0:
@@ -576,7 +578,6 @@ for trial in trials:
 
     # Fixation cross:
     fix_1_frames = int(cue_delay * frame_rate)
-    print('cue delay: ' + str(cue_delay))
     for fix_1_frame in range(fix_1_frames):
         flip_time = frame_routine()
 
@@ -589,11 +590,18 @@ for trial in trials:
         scue_onset_frame = int(scue_delay * frame_rate)
         if debug:
             print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
+        ## 2020-10-14: sound prescheduling doesn't seem to work well
+        # now = ptb.GetSecs()
+        # when_time = now + scue_delay
+        # if debug:
+        #     print('DEBUG: now time is %.2f' % now)
+        #     print('DEBUG: when time is %.2f' % when_time)
         # if this_scue_pitch_hi:
-        #     scue_hi.play(when=flip_time+scue_delay)
+        #     scue_hi.play(when=when_time)
         # else:
-        #     scue_lo.play(when=flip_time+scue_delay)
-        # print('DEBUG: Scheduled the sound replay.')
+        #     scue_lo.play(when=when_time)
+        # if debug:
+        #     print('DEBUG: Scheduled the sound replay.')
     else:
         pretarg_frames = range(int((1.5 + this_targ_soa) * frame_rate))
     scue_playing = False
@@ -620,6 +628,7 @@ for trial in trials:
                 if debug:
                     print('DEBUG: spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
                     print('DEBUG: audio tone latency = ' + str(flip_time))  # debug
+                ## Running without prescheduling:
                 if this_scue_pitch_hi:
                     scue_hi.play()
                 else:
@@ -656,7 +665,8 @@ for trial in trials:
 
     # ----------------------------------------------
     # Post-targ frame loop
-    print('Post-target frame loop.')
+    if debug:
+        print('Post-target frame loop.')
     if not dummy_mode:
         # Passing arbitrary flip times for BLINK LATENCY and WINDOW as they are not relevant
         tracker.sendMessage('BLINK_LATENCY_ONSET %.2f' % flip_time)
@@ -680,7 +690,8 @@ for trial in trials:
     event.clearEvents()
 
     if not measure:
-        print('Tracking response to target.')
+        if debug:
+            print('Tracking response to target.')
 
         # In the [eb2] experiment, introducing a delay period after which the target is displayed
         if exp_name == 'eb2' and this_targ_soa > 0:
