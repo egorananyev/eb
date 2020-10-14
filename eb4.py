@@ -53,7 +53,7 @@ if toshi:
 else:
     dr = (1152, 864)  # display resolution in px
     ds = 65  # distance to screen in cm
-    dd = (40.0, 30.0)  # display dimensions in cm: 39.0x29.5; ~34deg hori'ly, 1cm~0.85deg, 1deg~33.87px
+    dd = (40.0, 30.0)  # display dimensions in cm: 39.0x29.5; ~34deg horizontally, 1cm~0.85deg, 1deg~33.87px
 # fixation cross:
 fix_size = 0.8
 background_color = [-.5, -.5, -.5]
@@ -576,7 +576,7 @@ for trial in trials:
     bcue_frames = range(int(cue_dur * frame_rate))
     if not measure:
         pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
-        scue_onset_frame = int((scue_delay) * frame_rate)
+        scue_onset_frame = int(scue_delay * frame_rate)
         print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
         # if this_scue_pitch_hi:
         #     scue_hi.play(when=flip_time+scue_delay)
