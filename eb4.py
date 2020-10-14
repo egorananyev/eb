@@ -19,8 +19,8 @@ AllOff = 'x'
 """
 
 # from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
-from psychopy import visual, core, event, gui, monitors, sound
 import psychtoolbox as ptb
+from psychopy import visual, core, event, gui, monitors, sound
 import numpy as np
 import os
 from subprocess import call  # for running shell commands from within Python
@@ -29,7 +29,6 @@ from psychopy.core import wait
 import pandas as pd
 from datetime import datetime
 import math
-# import psychtoolbox as ptb
 
 # Imports associated with the eye tracker:
 import pylink
@@ -39,7 +38,7 @@ from EyeLinkCoreGraphicsPsychoPy import EyeLinkCoreGraphicsPsychoPy
 # experiment modes:
 toshi = False
 dummy_mode = False
-debug = False
+debug = True
 drift_check = False
 # experiment variables:
 cue_delay_min = 500  # the time frame before the location/blink cue
@@ -383,11 +382,12 @@ def exit_routine():
     # attempting to close the goggles:
     print('Initiating the exit routine.')
     # noinspection PyBroadException
-    try:
-        ser.write('z')
-        print('Closed the goggles.')
-    except:
-        print('Failed to close the goggles -- they might not have been used.')
+    if shutters:
+        try:
+            ser.write('z')
+            print('Closed the goggles.')
+        except:
+            print('Failed to close the goggles -- they might not have been used.')
 
     # Behavioural data output:
     if not output_mat:  # means that the dictionary is empty
@@ -446,7 +446,9 @@ for trial in trials:
         flip_time = window.flip()
 
         # wait until a space key event occurs after the instructions are displayed
-        event.waitKeys(' ')
+        # event.waitKeys(' ')
+        event.waitKeys(keyList=['space'])
+        # space_key = event.getKeys(keyList=['space'])
 
     n_trials_done += 1
     print('======TRIAL#' + str(n_trials_done) + '======')
@@ -538,7 +540,8 @@ for trial in trials:
         # take the tracker offline
         tracker.setOfflineMode()
         # tracker.sendMessage('PRE_PUMP %.2f' % flip_time)
-        pylink.pumpDelay(50)
+        # pylink.pumpDelay(50)
+        pylink.msecDelay(50)  # 2020-10-14: replaced the previous line as part of psypy2 to 3 migration
 
         # Send the standard "TRIALID" message to mark the start of a trial
         # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
@@ -559,13 +562,16 @@ for trial in trials:
 
         # Start recording, parameters specify whether events and samples are stored in file and available over the link
         error = tracker.startRecording(1, 1, 1, 1)
-        pylink.pumpDelay(100)  # wait for 100 ms to make sure data of interest is recorded
+        # pylink.pumpDelay(100)  # wait for 100 ms to make sure data of interest is recorded
+        pylink.beginRealTimeMode(100)  # 2020-10-14: replaced the previous line as part of psypy2 to 3 migration
 
     ## Cycling through the trial phases:
     flip_time = window.flip()
     trial_t_start = flip_time
     if not dummy_mode:
         # Send trial initiation message only post-pump delay:
+        if debug:
+            print('DEBUG: flip_time is: %.2f' % flip_time)
         tracker.sendMessage('TRIAL_START %.2f' % flip_time)
 
     # Fixation cross:
@@ -581,7 +587,8 @@ for trial in trials:
     if not measure:
         pretarg_frames = range(int((scue_delay + this_targ_soa) * frame_rate))
         scue_onset_frame = int(scue_delay * frame_rate)
-        print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
+        if debug:
+            print('DEBUG: scue onset frame = ' + str(scue_onset_frame))
         # if this_scue_pitch_hi:
         #     scue_hi.play(when=flip_time+scue_delay)
         # else:
@@ -610,8 +617,9 @@ for trial in trials:
                 scue_playing = True
                 if not dummy_mode:
                     tracker.sendMessage('SCUE_ONSET %.2f' % flip_time)
-                print('spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
-                print('DEBUG: audio tone latency = ' + str(flip_time))  # debug
+                if debug:
+                    print('DEBUG: spatial cue latency error = ' + str(scue_onset_frame - pretarg_frame))
+                    print('DEBUG: audio tone latency = ' + str(flip_time))  # debug
                 if this_scue_pitch_hi:
                     scue_hi.play()
                 else:
@@ -685,7 +693,8 @@ for trial in trials:
 
         # Important to measure the flip time for accurate RT measurement just below:
         flip_time = frame_routine()
-        print('DEBUG: target latency = ' + str(flip_time))  # debug
+        if debug:
+            print('DEBUG: target latency = ' + str(flip_time))  # debug
 
         # Trial components pertaining to behavioural response:
         targ_resp_given = False
@@ -741,7 +750,7 @@ for trial in trials:
     window.flip()
 
     # wait until a space key event occurs after the instructions are displayed
-    event.waitKeys(' ')
+    event.waitKeys(keyList=['space'])
 
     flip_time = window.flip()
     if not dummy_mode:
@@ -787,6 +796,7 @@ for trial in trials:
         # send a message to mark the end of trial
         # [see Data Viewer User Manual, Section 7: Protocol for EyeLink Data to Viewer Integration]
         tracker.sendMessage('TRIAL_RESULT')
+        pylink.endRealTimeMode()
         pylink.pumpDelay(100)
         tracker.stopRecording()
 
