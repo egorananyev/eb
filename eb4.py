@@ -19,6 +19,8 @@ AllOff = 'x'
 """
 
 # from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
+from psychopy import prefs
+prefs.hardware['audioLib'] = ['PTB']
 import psychtoolbox as ptb
 from psychopy import visual, core, event, gui, monitors, sound
 import numpy as np
@@ -267,7 +269,7 @@ fix_cross = visual.TextStim(window, text='+', bold='True', pos=[0, 0], rgb=1, he
 bcue_box = visual.Rect(window, width=cue_size, height=cue_size, lineColor=cue_color)
 
 # A pitch (spatial) cue:
-sample_rate = 22500
+sample_rate = 16000  # 22500
 freq_L = 200
 freq_R = 800
 # bits = -16
@@ -287,8 +289,10 @@ for s in range(n_samples):
     buf_R[s][0] = 0  # left
     buf_R[s][1] = val_R  # right
 
+print(sound.Sound)
 scue_lo = sound.Sound(value=buf_L, sampleRate=sample_rate)  # , bits=bits)
 scue_hi = sound.Sound(value=buf_R, sampleRate=sample_rate)  # , bits=bits)
+print('loaded sound')
 
 # A circle target:
 targ = visual.Circle(window, radius=targ_diam / 2, edges=32, pos=(0, 5), fillColor=targ_color, lineColor=targ_color)
