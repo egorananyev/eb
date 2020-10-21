@@ -20,7 +20,10 @@ AllOff = 'x'
 
 # from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import prefs
-prefs.hardware['audioLib'] = ['PTB']
+prefs.hardware['audioLib'] = ['pyo']
+# ['PTB'] fails after one run, but can be reset...
+# ['sounddevice'] doesn't work
+# ['pyo'] works, but with lots of ALSA warnings
 import psychtoolbox as ptb
 from psychopy import visual, core, event, gui, monitors, sound
 import numpy as np
