@@ -84,7 +84,7 @@ parse_trials = function(raw_data, cond, eb){
     trials$trial = as.numeric(rownames(trials))
     # Adding cue onset times:
     trials = cbind(trials, 
-                   data.frame(cue_onset=dfy(raw_data[grepl('CUE_ONSET', raw_data)], c(3,5), 2)))
+                   data.frame(cue_onset=dfy(raw_data[grepl(' CUE_ONSET', raw_data)], c(3,5), 2)))
     if(eb=='4' & cond!='cond-m'){
         trials = cbind(trials, 
                        data.frame(scue_onset=dfy(raw_data[grepl('SCUE_ONSET', raw_data)], c(3,5),
@@ -138,13 +138,6 @@ parse_trials = function(raw_data, cond, eb){
         shutters_on = dfy(raw_data[grepl('SHUTTER_START', raw_data)], c(3,5), 2)
         # Due to a fixed bug, some shutter off fail to appear: accounting for that
         shutters_off = shutters_off=dfy(raw_data[grepl('SHUTTER_END', raw_data)], c(3,5), 2)
-        # Registering the space bar presses in the AB condition:
-        cue_resp_lines = grepl('CUE_RESP_TIME', raw_data)
-        if(sum(cue_resp_lines) > 0){
-            space_time = dfy(raw_data[cue_resp_lines], c(3,5), 2)
-        } else {
-            space_time = NA
-        }
         # Labeling the shutter-off time trials:
         for(cur_trial in as.numeric(rownames(trials))){
             this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
@@ -153,22 +146,38 @@ parse_trials = function(raw_data, cond, eb){
                                shutters_off$X1 <= this_trial_sample_end] = cur_trial
             shutters_on$trial[shutters_on$X1 >= this_trial_sample_beg &
                               shutters_on$X1 <= this_trial_sample_end] = cur_trial
+        }
+        trials = merge(trials, shutters_off, by='trial', all=T)
+        trials = merge(trials, shutters_on, by='trial', all=T)
+        colnames(trials)[(ncol(trials)-3):ncol(trials)] = c('shutter_sample_beg','shutter_time_beg',
+                                                            'shutter_sample_end','shutter_time_end')
+    }
+    
+    # Adding the cue resp times for the control conditions:
+    if(cond %in% c('cond-a','cond-c')){
+        # Registering the space bar presses in the AB and NB conditions:
+        cue_resp_lines = grepl('CUE_RESP_TIME', raw_data)
+        if(sum(cue_resp_lines) > 0){
+            space_time = dfy(raw_data[cue_resp_lines], c(3,5), 2)
+        } else {
+            space_time = NA
+        }
+        # Recording the space bar press trial-by-trial:
+        for(cur_trial in as.numeric(rownames(trials))){
+            this_trial_sample_beg = trials$trial_sample_beg[cur_trial]
+            this_trial_sample_end = trials$trial_sample_end[cur_trial]
             if(!is.null(nrow(space_time))){
                 space_time$trial[space_time$X1 >= this_trial_sample_beg &
                                  space_time$X1 <= this_trial_sample_end] = cur_trial
             }
         }
-        trials = merge(trials, shutters_off, by='trial', all=T)
-        trials = merge(trials, shutters_on, by='trial', all=T)
         if(!is.null(nrow(space_time))){
             trials = merge(trials, space_time, by='trial', all=T)
         } else {
             trials$na1 = NA
             trials$na2 = NA
         }
-        colnames(trials)[(ncol(trials)-5):ncol(trials)] = c('shutter_sample_beg','shutter_time_beg',
-                                                            'shutter_sample_end','shutter_time_end',
-                                                            'cue_resp_sample','cue_resp_time')
+        colnames(trials)[(ncol(trials)-1):ncol(trials)] = c('cue_resp_sample','cue_resp_time')
     }
     # For sample rate check, the last column should be all 1000 (corresponding to Hz):
     trials$tot_trial_samples = trials$trial_sample_end - trials$trial_sample_beg
@@ -257,9 +266,9 @@ parse_blanks = function(raw_data, trials){
                     trial_blanks$tot_blank_time = with(trial_blanks,
                                                        blank_time_end - blank_time_beg)
                     trial_blanks$blank_post_cue = as.numeric(trial_blanks$blank_sample_beg >
-                                                       this_trial$cue_sample)
+                                                             this_trial$cue_sample)
                     trial_blanks$blank_post_targ = as.numeric(trial_blanks$blank_sample_beg >
-                                                        this_trial$targ_sample)
+                                                              this_trial$targ_sample)
                     all_blanks = rbind(all_blanks, trial_blanks)
                 }
             }

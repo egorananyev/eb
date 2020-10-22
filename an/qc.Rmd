@@ -23,7 +23,7 @@ code.r{
 # options(width=100)
 eb = '4'
 subj = 'subj-00'
-cond = 'cond-m'
+cond = 'cond-c'
 cue = 'cp'  # cp/cu = predictive/unpredictive
 block = 1
 debug = F
@@ -31,21 +31,26 @@ included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
 # if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
 # if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
-if(computer=='shocky' || computer=='acer'){
-  # cloud_dir = 'C:/gd/'  # when I'm processing archived data
-  cloud_dir = 'C:/Users/egora/Dropbox/'  # when I'm processing during data collection
+if(computer=='acer'){
+  cloud_dir = 'C:/gd/Projects/eb/'
   prog_dir = 'C:/Users/egora/'
 }
+if(computer=='shocky'){
+  # cloud_dir = 'C:/gd/'  # when I'm processing archived data
+  # cloud_dir = 'C:/Users/egora/Dropbox/'  # when I'm processing during data collection
+  cloud_dir = 'C:/gd/Projects/eb/'
+  prog_dir = 'C:/Users/Egor/'
+}
 if(computer=='station3'){
-  prog_dir = '/home/station3/Desktop/Egor/'
   cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
+  prog_dir = '/home/station3/Desktop/Egor/'
 }
 if(computer == 'toshi') {
-  prog_dir = 'C:/Users/Egor/'
   cloud_dir = 'C:/Users/Egor/Google Drive/'
+  prog_dir = 'C:/Users/Egor/'
 }
 library(R.utils)
 library(plyr)

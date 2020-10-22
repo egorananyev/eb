@@ -60,20 +60,20 @@ ds_vars = function(ds, ctoa_bin_nof){
 ds_et_merge = function(et, ds){
   # For experiments 2 and above, 'block' is called 'sess'
   if(as.character(unique(ds$exp_name)) != 'eb1'){
-    sess_str = 'sess'
-  } else {
     sess_str = 'block'
+  } else {
+    sess_str = 'sess'
   }
   # Actually... it looks like the thing is *always* called 'sess'... I'm confused:
-  sess_str = 'sess'
+  # sess_str = 'sess'
   # For analyzing eye blink parameters alongside behavioral data, only prompted blink cond is meaningful:
   et_filt = et[et$cond!='c',]
   # (This could have been done at the input stage, but I may need post-trial blinks at some point.)
   
   # In the <eb> dataset, only keeping blinks that occurs between the cue and the target:
   et_filt2 = et_filt[(et_filt$blank_sample_beg > et_filt$cue_sample) & 
-                 (et_filt$blank_sample_end < et_filt$targ_sample) &
-                 (!is.na(et_filt$blank_sample_beg)),]
+                     (et_filt$blank_sample_end < et_filt$targ_sample) &
+                     (!is.na(et_filt$blank_sample_beg)),]
   # CHECK: Test row to check if the above works:
   # ( et_filt[et_filt$subj==3 & et_filt$block==1 & et_filt$cond=='v' & et_filt$cue_pred==1 & et_filt$trial==11,] )
   # ( et_filt2[et_filt2$subj==3 & et_filt2$block==1 & et_filt2$cond=='v' & et_filt2$cue_pred==1 & et_filt2$trial==11,] )

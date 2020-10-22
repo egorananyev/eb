@@ -67,7 +67,7 @@ plot_qc = function(trial_samples, trial_blanks, this_trial, trial_sacc){
     }
     # [2019-06-28] and space presses AB condition:
     # [2020-04-07] unfortunately, the space bar is recorded in beh file, but not in et ds, for NB
-    if(cond %in% c('cond-a')){
+    if(cond %in% c('cond-a', 'cond-c')){
         p = p + geom_vline(data=this_trial, aes(xintercept=cue_resp_time-trial_time_beg),
                            linetype='dotted')
     }

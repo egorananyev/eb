@@ -1,0 +1,171 @@
+---
+title: "[eb3] Data Processing"
+author: "Egor Ananyev"
+date: "2020-03-09"
+output:
+    html_document:
+        toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<style type="text/css">
+body, td{
+  font-family: Cambria;
+}
+code.r{
+  font-family: Inconsolata;
+}
+</style>
+
+# Data input and parsing
+```{r set-options, message=F}
+options(width=100)
+debug = F
+library(plyr)
+library(dplyr)
+computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+if(computer=='acer'){
+  cloud_dir = 'C:/gd/Projects/eb/'
+  prog_dir = 'C:/Users/egora/'
+}
+if(computer=='shocky'){
+  cloud_dir = 'C:/gd/Projects/eb/'
+  prog_dir = 'C:/Users/Egor/Prog/'
+}
+if(computer=='station3'){
+  cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
+  prog_dir = '/home/station3/Desktop/Egor/'
+}
+if(computer == 'toshi') {
+  cloud_dir = 'C:/Users/Egor/Google Drive/'
+  prog_dir = 'C:/Users/Egor/'
+}
+# Sourcing functions that will help clean the data, including ds_ops.R, etc.
+library(R.utils)
+sourceDirectory(paste(prog_dir, 'eb/an/funs_an', sep='/'))
+# Reading the data
+all_data_dir = paste0(cloud_dir, 'data/eb4/')
+conds = c('cond-a', 'cond-c', 'cond-v')
+cue_conds = c('cp')  # cue predictive and unpredictive
+df = data.frame()
+et = data.frame()
+excl = data.frame()
+# cur_cue_cond = cue_conds[1]
+for(cur_cue_cond in cue_conds){
+  cur_cue_bin = as.numeric(cur_cue_cond == 'cp')  # binary variable for whether the cue is pred've
+  data_dir = paste0(all_data_dir, cur_cue_cond, '/')
+  subjs = dir(data_dir, pattern='subj-')
+  # subjs = subjs[5]
+  # subjs = subjs[1:17]  # temp
+  # cur_subj = subjs[1]  # temp
+  for(cur_subj in subjs){
+    cur_subj_dir = paste0(data_dir, cur_subj)
+    # cur_cond = conds[2]  # temp
+    for(cur_cond in conds){
+      block_order = 0
+      cur_cond_dir = paste(cur_subj_dir, cur_cond, sep='/')
+      blocks = dir(cur_cond_dir, pattern='block-')
+      # cur_block = blocks[5]  # temp
+      for(cur_block in blocks){
+        cur_block_dir = paste(cur_cond_dir, cur_block, sep='/')
+        print(cur_block_dir)
+        cur_df = read.csv(paste(cur_block_dir, 'beh_out.csv', sep='/'))
+        # Making sure 'cue_pred' column exists; if not, writing it in:
+        if(!'cue_pred' %in% colnames(cur_df)){
+          cur_df$cue_pred = cur_cue_bin
+        } else {
+          if(unique(cur_df$cue_pred) != cur_cue_bin){
+            print('ERROR! Cue predictiveness condition does not match the data!')
+          }
+        }
+        # Same for target SOA:
+        if(!'targ_soa' %in% colnames(cur_df)){ cur_df$targ_soa = 0 }
+        # Reading the eye-tracking data:
+        cur_et = read.csv(paste(cur_block_dir, 'eye_tracking.csv', sep='/'))
+        # "unique" function helps resolve disparities in folder naming & data set values:
+        cur_et = cbind(data.frame(subj=unique(cur_df$subj),
+                                  cue_pred=cur_cue_bin, 
+                                  cond=unique(cur_df$cond), 
+                                  block=unique(cur_df$block)),
+                       cur_et)
+        # For eye-tracking data, making sure that the extra columns from AB cond are present:
+        if(cur_cond == 'cond-v'){
+          cur_et = cbind(cur_et,
+                         data.frame(shutter_sample_beg = NA, shutter_time_beg = NA,
+                                    shutter_sample_end = NA, shutter_time_end = NA,
+                                    cue_resp_sample = NA, cue_resp_time = NA))
+        }
+        if(cur_cond == 'cond-c'){
+          cur_et = cbind(cur_et,
+                         data.frame(shutter_sample_beg = NA, shutter_time_beg = NA,
+                                    shutter_sample_end = NA, shutter_time_end = NA))
+        }
+        # print(colnames(cur_df))  # debug
+        ## Adding the time stamp to the data
+        cur_df$block_date = substr(cur_block, 9, 18)
+        cur_df$block_time = as.numeric(substr(cur_block, 20, 23))
+        block_order = block_order + 1
+        cur_df$block_order = block_order
+        # df = cur_df  # temp
+        df = rbind(df, cur_df)
+        et = rbind(et, cur_et)
+        excl_file = paste(cur_block_dir, 'exclude_trials.csv', sep='/')
+        if(file.exists(excl_file)){
+          excl_file_df = read.csv(excl_file)
+          if(nrow(excl_file_df) > 0){
+            cur_excl = cbind(data.frame(subj=as.numeric(substr(cur_subj, 6, 7)), 
+                                        cue_pred=cur_cue_bin, cond=substr(cur_cond, 6, 6),
+                                        block=as.numeric(substr(cur_block, 7, 7))), excl_file_df)
+            excl = rbind(excl, cur_excl)
+          }
+        }
+      }
+    }
+  }
+}
+colnames(df)[6] = 'trial'  # renaming the 'trial_id' column to 'trial'
+head(df)
+ds = df
+# print(excl)
+```
+
+# Trial exclusions
+```{r}
+short_rt_cutoff = 0.2
+long_rt_cutoff = 1
+cols_to_include = c('subj', 'cue_pred', 'cond', 'block', 'trial')
+# Excluding trials with RTs that are too short (below 200 ms)
+excl_short = ds[ds$rt<short_rt_cutoff, cols_to_include]
+excl = ds_exclude(excl_short, 'short RT')
+# Excluding trials with long RTs:
+excl_long = ds[ds$rt>long_rt_cutoff, cols_to_include]
+excl = ds_exclude(excl_long, 'long RT')
+# Excluding trials with false responses (analyzed separately from RTs):
+# (2020-04-14: no longer doing this; will analyze accuracy)
+# excl_false = ds[ds$corr_resp==0, cols_to_include]
+# excl = ds_exclude(excl_false, 'incorrect response')
+# Displaying number of trials to be excluded, based on condition and block
+head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))
+# Excluding trials based on the quality control & the RT exclusion criteria:
+ds = anti_join(ds, excl, by=c('subj', 'cue_pred', 'cond', 'block', 'trial'))
+```
+
+# Trimming the data set
+```{r}
+# Naming variables (from ds_ops.R):
+ds = ds_naming(ds)
+# Creating variable columns with rescaled or binned variables:
+ds = ds_vars(ds, 0)  # not binning CTOAs, since it doesn't vary for expt3
+# Merging eye tracking and behavioral data (AB & PB only):
+dsa = ds_et_merge(et, ds)
+# dsa = ds_et_merge(et, ds, by=c('subj', 'cue_pred', 'block', 'trial', 'cond'))
+# Summary stats
+head(ddply(ds, .(subj, cue_pred, cond, cue_valid), summarise, mean_RT = mean(RT)))
+```
+
+# Data output
+```{r}
+write.csv(ds, 'ds4.csv', row.names=F)
+write.csv(dsa, 'dsa4.csv', row.names=F)
+```
