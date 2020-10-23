@@ -22,9 +22,10 @@ code.r{
 ```{r set-options, message=F}
 options(width=100)
 debug = F
+library(R.utils)
 library(plyr)
 library(dplyr)
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/Projects/eb/'
   prog_dir = 'C:/Users/egora/'
@@ -34,16 +35,15 @@ if(computer=='shocky'){
   prog_dir = 'C:/Users/Egor/Prog/'
 }
 if(computer=='station3'){
-  cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
-  prog_dir = '/home/station3/Desktop/Egor/'
+  cloud_dir = '/home/station3/Desktop/Egor/'
+  prog_dir = cloud_dir
 }
 if(computer == 'toshi') {
   cloud_dir = 'C:/Users/Egor/Google Drive/'
   prog_dir = 'C:/Users/Egor/'
 }
 # Sourcing functions that will help clean the data, including ds_ops.R, etc.
-library(R.utils)
-sourceDirectory(paste(prog_dir, 'eb/an/funs_an', sep='/'))
+sourceDirectory(paste0(prog_dir, 'eb/an/funs_an'))
 # Reading the data
 all_data_dir = paste0(cloud_dir, 'data/eb4/')
 conds = c('cond-a', 'cond-c', 'cond-v')

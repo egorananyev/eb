@@ -73,7 +73,7 @@ targ_diam = .8
 targ_color = [0, 0, 0]
 
 ## getting user info about the experiment session:
-exp_info = {u'subj': u'0', u'cond': u'v', u'block': u'0', u'soa': u'300'}
+exp_info = {u'subj': u'1', u'cond': u'c', u'block': u'', u'soa': u'00'}
 # conditions: 't'=training, 'c'=control, 'a'=artificial blink, 'v'=voluntary blink, 'm'=measurement
 # cue_pred: cue is either predictive (75% valid) or unpredictive (50% valid)
 dlg = gui.DlgFromDict(dictionary=exp_info, title='eb')  # dialogue box
@@ -100,7 +100,7 @@ elif exp_name == 'eb3':
     # with 11 blocks, the above session should last 40-50 min.
 elif exp_name == 'eb4':
     cue_pred = 1
-    trial_n = 3  # 2 trials per 24 conditions = 48 trials per block; 3 => 72
+    trial_n = 2  # 2 trials per 24 conditions = 48 trials per block; 3 => 72
 
 # Assigning conditions:
 eye_tracking = True  # true by default
@@ -195,7 +195,7 @@ else:
     trials = TrialHandler(exp_conditions, trial_n, extraInfo=exp_info)
 
 # output file:
-exp_dir = '..' + os.sep + 'Dropbox' + os.sep + 'data' + os.sep + exp_name + os.sep + cue_dir
+exp_dir = '..' + os.sep + 'data' + os.sep + exp_name + os.sep + cue_dir
 if not os.path.exists(exp_dir):
     print('experiment directory does not exist')
     os.makedirs(exp_dir)

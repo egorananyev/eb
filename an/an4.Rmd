@@ -34,29 +34,28 @@ library(ggplot2)
 library(lme4)
 library(lmerTest)
 library(reshape)
-# library(reshape2)
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
+library(R.utils)
+computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
-  cloud_dir = 'C:/gd/Projects/eb/'
+  cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
 }
 if(computer=='shocky'){
-  cloud_dir = 'C:/gd/Projects/eb/'
+  cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/Egor/Prog/'
 }
 if(computer=='station3'){
-  cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
-  prog_dir = '/home/station3/Desktop/Egor/'
+  cloud_dir = '/home/station3/Desktop/Egor/'
+  prog_dir = cloud_dir
 }
 if(computer == 'toshi') {
   cloud_dir = 'C:/Users/Egor/Google Drive/'
   prog_dir = 'C:/Users/Egor/'
 }
-library(R.utils)
-sourceDirectory(paste(prog_dir, '/eb/an/funs_an', sep='/'))
-source('C:/gd/Prog/R/myFunctions/pvalfn.R')
-ds = read.csv(paste(prog_dir, 'eb/an/consolidated/ds4.csv', sep=''))
-dsa = read.csv(paste(prog_dir, 'eb/an/consolidated/dsa4.csv', sep=''))
+sourceDirectory(paste0(prog_dir, 'eb/an/funs_an'))
+source(paste0(cloud_dir, 'Prog/R/myFunctions/pvalfn.R'))
+ds = read.csv(paste0(prog_dir, 'eb/an/consolidated/ds4.csv'))
+dsa = read.csv(paste0(prog_dir, 'eb/an/consolidated/dsa4.csv'))
 # Reordering levels of Condition variable, such that No Blink condition is the reference:
 ds$Cond = factor(ds$Cond, c('NoBlink','Artificial','Prompted'))
 ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blink'))

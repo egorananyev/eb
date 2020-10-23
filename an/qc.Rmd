@@ -21,45 +21,42 @@ code.r{
 # Data input and parsing
 ```{r set-options, message=F}
 # options(width=100)
+library(R.utils)
+library(plyr)
 eb = '4'
-subj = 'subj-00'
-cond = 'cond-c'
+subj = 'subj-01'
+cond = 'cond-a'
 cue = 'cp'  # cp/cu = predictive/unpredictive
-block = 1
+block = 3
 debug = F
 included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'shocky'  # 'shocky', 'station3', 'acer' are all possible options
-# if(computer=='shocky'){ cloud_dir='/Users/Egor/Dropbox/' }
-# if(computer=='acer' || computer == 'toshi'){ cloud_dir = 'C:/Users/egora/Dropbox/' }
+computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
-  cloud_dir = 'C:/gd/Projects/eb/'
-  prog_dir = 'C:/Users/egora/'
+  cloud_dir = 'C:/gd/'
+  prog_dir = 'C:/Users/egora/Prog/'
 }
 if(computer=='shocky'){
-  # cloud_dir = 'C:/gd/'  # when I'm processing archived data
-  # cloud_dir = 'C:/Users/egora/Dropbox/'  # when I'm processing during data collection
-  cloud_dir = 'C:/gd/Projects/eb/'
-  prog_dir = 'C:/Users/Egor/'
+  cloud_dir = 'C:/gd/'
+  prog_dir = 'C:/Users/Egor/Prog/'
 }
 if(computer=='station3'){
-  cloud_dir = '/home/station3/Desktop/Egor/Dropbox/'
-  prog_dir = '/home/station3/Desktop/Egor/'
+  cloud_dir = '/home/station3/Desktop/Egor/'
+  prog_dir = cloud_dir
 }
 if(computer == 'toshi') {
   cloud_dir = 'C:/Users/Egor/Google Drive/'
   prog_dir = 'C:/Users/Egor/'
 }
-library(R.utils)
-library(plyr)
-# sourceDirectory(paste0(cloud_dir, 'Projects/eb/eb/an/funs_qc'))
-if(computer=='station3'){
-  sourceDirectory(paste0(prog_dir, 'eb/an/funs_qc'))
-} else {
-  sourceDirectory(paste0(prog_dir, 'Prog/eb/an/funs_qc'))
-}
+sourceDirectory(paste0(prog_dir, 'eb/an/funs_qc'))
+# source(paste0(cloud_dir, 'Prog/R/myFunctions/pvalfn.R'))
+# if(computer=='station3'){
+#   sourceDirectory(paste0(prog_dir, 'eb/an/funs_qc'))
+# } else {
+#   sourceDirectory(paste0(prog_dir, 'Prog/eb/an/funs_qc'))
+# }
 # Getting the data directory:
 data_dir = get_dir(cloud_dir, eb, cue, subj, cond, block)
 print(data_dir)
