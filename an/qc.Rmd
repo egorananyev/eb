@@ -24,7 +24,7 @@ code.r{
 library(R.utils)
 library(plyr)
 eb = '4'
-subj = 'subj-01'
+subj = 'subj-06'
 cond = 'cond-a'
 cue = 'cp'  # cp/cu = predictive/unpredictive
 block = 3
@@ -33,7 +33,7 @@ included_trials = c(1)  # if debug==T
 # Exclusions constants:
 eo_tolerance = 0.1  # 'eyes open' tolerance: time allowed to open eyes post target presentation
 # Handling directories:
-computer = 'station3'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'toshi'  # 'toshi', 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
@@ -47,8 +47,8 @@ if(computer=='station3'){
   prog_dir = cloud_dir
 }
 if(computer == 'toshi') {
-  cloud_dir = 'C:/Users/Egor/Google Drive/'
-  prog_dir = 'C:/Users/Egor/'
+  cloud_dir = 'C:/Users/Egor/Google Drive/Projects/eb/'
+  prog_dir = 'C:/Users/Egor/Prog/'
 }
 sourceDirectory(paste0(prog_dir, 'eb/an/funs_qc'))
 # source(paste0(cloud_dir, 'Prog/R/myFunctions/pvalfn.R'))
@@ -262,7 +262,7 @@ if(!is.null(excl_manual)){
 # Manually overriding any auto-exclusions, if any:
 if(!is.null(incl_manual)){
   print('Warning! Manual exclusion override code has not been tested!')
-  all_excl = all_excl(!all_excl$trial %in% unique(incl_manual$trial))
+  all_excl = all_excl[!all_excl$trial %in% unique(incl_manual$trial)]
 }
 # Writing exclusions to a file:
 if(!is.null(all_excl)){
