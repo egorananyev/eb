@@ -34,7 +34,7 @@ library(lme4)
 library(lmerTest)
 library(reshape)
 library(R.utils)
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
@@ -49,7 +49,7 @@ if(computer=='station3'){
 }
 if(computer == 'toshi') {
   cloud_dir = 'C:/Users/Egor/Google Drive/'
-  prog_dir = 'C:/Users/Egor/'
+  prog_dir = 'C:/Users/Egor/Prog/'
 }
 sourceDirectory(paste0(prog_dir, 'eb/an/funs_an'))
 source(paste0(cloud_dir, 'Prog/R/myFunctions/pvalfn.R'))

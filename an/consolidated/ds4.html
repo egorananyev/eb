@@ -256,7 +256,9 @@ h6 {
 </style>
 
 
+</head>
 
+<body>
 
 <style type="text/css">
 .main-container {
@@ -287,6 +289,8 @@ summary {
 </style>
 
 
+
+<div class="container-fluid main-container">
 
 <!-- tabsets -->
 
@@ -361,23 +365,14 @@ $(document).ready(function () {
 
 
 
-</head>
-
-<body>
-
-
-<div class="container-fluid main-container">
-
-
-
 
 <div class="fluid-row" id="header">
 
 
 
 <h1 class="title toc-ignore">[eb3] Data Processing</h1>
-<h4 class="author">Egor Ananyev</h4>
-<h4 class="date">2020-03-09</h4>
+<h4 class="author"><em>Egor Ananyev</em></h4>
+<h4 class="date"><em>2020-03-09</em></h4>
 
 </div>
 
@@ -402,10 +397,15 @@ code.r{
 <h1>Data input and parsing</h1>
 <pre class="r"><code>options(width=100)
 debug = F
-library(R.utils)
-library(plyr)
-library(dplyr)
-computer = &#39;acer&#39;  # &#39;shocky&#39;, &#39;station3&#39;, &#39;acer&#39; are all possible options
+library(R.utils)</code></pre>
+<pre><code>## Warning: package &#39;R.utils&#39; was built under R version 3.5.2</code></pre>
+<pre><code>## Warning: package &#39;R.oo&#39; was built under R version 3.5.2</code></pre>
+<pre><code>## Warning: package &#39;R.methodsS3&#39; was built under R version 3.5.2</code></pre>
+<pre class="r"><code>library(plyr)</code></pre>
+<pre><code>## Warning: package &#39;plyr&#39; was built under R version 3.5.2</code></pre>
+<pre class="r"><code>library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.5.2</code></pre>
+<pre class="r"><code>computer = &#39;toshi&#39;  # &#39;shocky&#39;, &#39;station3&#39;, &#39;acer&#39; are all possible options
 if(computer==&#39;acer&#39;){
   cloud_dir = &#39;C:/gd/Projects/eb/&#39;
   prog_dir = &#39;C:/Users/egora/Prog/&#39;
@@ -419,8 +419,8 @@ if(computer==&#39;station3&#39;){
   prog_dir = cloud_dir
 }
 if(computer == &#39;toshi&#39;) {
-  cloud_dir = &#39;C:/Users/Egor/Google Drive/&#39;
-  prog_dir = &#39;C:/Users/Egor/&#39;
+  cloud_dir = &#39;C:/Users/Egor/Google Drive/Projects/eb/&#39;
+  prog_dir = &#39;C:/Users/Egor/Prog/&#39;
 }
 # Sourcing functions that will help clean the data, including ds_ops.R, etc.
 sourceDirectory(paste0(prog_dir, &#39;eb/an/funs_an&#39;))
@@ -504,49 +504,85 @@ for(cur_cue_cond in cue_conds){
     }
   }
 }</code></pre>
-<pre><code>## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-a/block-2_2020-10-28_1211&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-a/block-3_2020-10-28_1217&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-c/block-1_2020-10-28_1236&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-c/block-2_2020-10-28_1240&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-c/block-3_2020-10-28_1244&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-v/block-1_2020-10-28_1222&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-v/block-2_2020-10-28_1227&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-02/cond-v/block-3_2020-10-28_1231&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-a/block-1_2020-10-28_1333&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-a/block-2_2020-10-28_1338&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-a/block-3_2020-10-28_1342&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-c/block-1_2020-10-28_1318&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-c/block-3_2020-10-28_1328&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-v/block-1_2020-10-28_1303&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-v/block-2_2020-10-28_1309&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-03/cond-v/block-3_2020-10-28_1314&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-a/block-1_2020-10-28_1358&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-a/block-2_2020-10-28_1406&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-a/block-3_2020-10-28_1412&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-c/block-1_2020-10-28_1418&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-c/block-2_2020-10-28_1424&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-c/block-3_2020-10-28_1429&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-v/block-1_2020-10-28_1435&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-v/block-2_2020-10-28_1441&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-04/cond-v/block-3_2020-10-28_1446&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-a/block-1_2020-10-28_1533&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-a/block-2_2020-10-28_1538&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-a/block-3_2020-10-28_1541&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-c/block-1_2020-10-28_1519&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-c/block-2_2020-10-28_1525&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-c/block-3_2020-10-28_1529&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-v/block-1_2020-10-28_1459&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-v/block-2_2020-10-28_1506&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-05/cond-v/block-3_2020-10-28_1511&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-a/block-1_2020-10-28_1635&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-a/block-2_2020-10-28_1640&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-a/block-3_2020-10-28_1645&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-c/block-1_2020-10-28_1601&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-c/block-2_2020-10-28_1608&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-c/block-3_2020-10-28_1612&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-v/block-1_2020-10-28_1616&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-v/block-2_2020-10-28_1622&quot;
-## [1] &quot;C:/gd/Projects/eb/data/eb4/cp/subj-06/cond-v/block-3_2020-10-28_1626&quot;</code></pre>
+<pre><code>## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-a/block-2_2020-10-28_1211&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-a/block-3_2020-10-28_1217&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-c/block-1_2020-10-28_1236&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-c/block-2_2020-10-28_1240&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-c/block-3_2020-10-28_1244&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-v/block-1_2020-10-28_1222&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-v/block-2_2020-10-28_1227&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-02/cond-v/block-3_2020-10-28_1231&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-a/block-1_2020-10-28_1333&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-a/block-2_2020-10-28_1338&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-a/block-3_2020-10-28_1342&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-c/block-1_2020-10-28_1318&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-c/block-3_2020-10-28_1328&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-v/block-1_2020-10-28_1303&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-v/block-2_2020-10-28_1309&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-03/cond-v/block-3_2020-10-28_1314&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-a/block-1_2020-10-28_1358&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-a/block-2_2020-10-28_1406&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-a/block-3_2020-10-28_1412&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-c/block-1_2020-10-28_1418&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-c/block-2_2020-10-28_1424&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-c/block-3_2020-10-28_1429&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-v/block-1_2020-10-28_1435&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-v/block-2_2020-10-28_1441&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-04/cond-v/block-3_2020-10-28_1446&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-a/block-1_2020-10-28_1533&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-a/block-2_2020-10-28_1538&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-a/block-3_2020-10-28_1541&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-c/block-1_2020-10-28_1519&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-c/block-2_2020-10-28_1525&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-c/block-3_2020-10-28_1529&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-v/block-1_2020-10-28_1459&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-v/block-2_2020-10-28_1506&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-05/cond-v/block-3_2020-10-28_1511&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-a/block-1_2020-10-28_1635&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-a/block-2_2020-10-28_1640&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-a/block-3_2020-10-28_1645&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-c/block-1_2020-10-28_1601&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-c/block-2_2020-10-28_1608&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-c/block-3_2020-10-28_1612&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-v/block-1_2020-10-28_1616&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-v/block-2_2020-10-28_1622&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-06/cond-v/block-3_2020-10-28_1626&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-a/block-1_2020-10-30_1212&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-a/block-2_2020-10-30_1218&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-a/block-3_2020-10-30_1221&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-c/block-1_2020-10-30_1159&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-c/block-2_2020-10-30_1205&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-c/block-3_2020-10-30_1209&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-v/block-1_2020-10-30_1224&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-v/block-2_2020-10-30_1228&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-07/cond-v/block-3_2020-10-30_1232&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-a/block-1_2020-10-30_1334&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-a/block-2_2020-10-30_1339&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-a/block-3_2020-10-30_1344&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-c/block-1_2020-10-30_1307&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-c/block-2_2020-10-30_1313&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-c/block-3_2020-10-30_1318&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-v/block-1_2020-10-30_1322&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-v/block-2_2020-10-30_1326&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-08/cond-v/block-3_2020-10-30_1330&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-a/block-1_2020-10-30_1504&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-a/block-2_2020-10-30_1511&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-a/block-3_2020-10-30_1516&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-c/block-1_2020-10-30_1534&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-c/block-2_2020-10-30_1538&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-c/block-3_2020-10-30_1542&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-v/block-1_2020-10-30_1520&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-v/block-2_2020-10-30_1525&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-09/cond-v/block-3_2020-10-30_1529&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-a/block-1_2020-10-30_1553&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-a/block-2_2020-10-30_1600&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-a/block-3_2020-10-30_1604&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-c/block-1_2020-10-30_1607&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-c/block-2_2020-10-30_1611&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-c/block-3_2020-10-30_1615&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-v/block-1_2020-10-30_1619&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-v/block-2_2020-10-30_1623&quot;
+## [1] &quot;C:/Users/Egor/Google Drive/Projects/eb/data/eb4/cp/subj-10/cond-v/block-3_2020-10-30_1626&quot;</code></pre>
 <pre class="r"><code>colnames(df)[6] = &#39;trial&#39;  # renaming the &#39;trial_id&#39; column to &#39;trial&#39;
 head(df)</code></pre>
 <pre><code>##   exp_name cue_pred subj cond block trial cue_delay targ_right scue_delay cue_valid targ_soa
@@ -574,17 +610,18 @@ cols_to_include = c(&#39;subj&#39;, &#39;cue_pred&#39;, &#39;cond&#39;, &#39;blo
 # Excluding trials with RTs that are too short (below 200 ms)
 excl_short = ds[ds$rt&lt;short_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_short, &#39;short RT&#39;)</code></pre>
-<pre><code>## [1] &quot;short RT 32&quot;</code></pre>
+<pre><code>## [1] &quot;short RT 115&quot;</code></pre>
 <pre class="r"><code># Excluding trials with long RTs:
 excl_long = ds[ds$rt&gt;long_rt_cutoff, cols_to_include]
 excl = ds_exclude(excl_long, &#39;long RT&#39;)</code></pre>
-<pre><code>## [1] &quot;long RT 2&quot;</code></pre>
+<pre><code>## [1] &quot;long RT 3&quot;</code></pre>
 <pre class="r"><code># Excluding trials with false responses (analyzed separately from RTs):
 # (2020-04-14: no longer doing this; will analyze accuracy)
 # excl_false = ds[ds$corr_resp==0, cols_to_include]
 # excl = ds_exclude(excl_false, &#39;incorrect response&#39;)
 # Displaying number of trials to be excluded, based on condition and block
 head(ddply(excl, .(subj, cue_pred, cond, excl_reason), summarise, num_excl = length(trial)))</code></pre>
+<pre><code>## Warning: package &#39;bindrcpp&#39; was built under R version 3.5.2</code></pre>
 <pre><code>##   subj cue_pred cond      excl_reason num_excl
 ## 1    2        1    a         no blink        1
 ## 2    2        1    a    pre-cue blink        1

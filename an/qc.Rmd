@@ -24,7 +24,7 @@ code.r{
 library(R.utils)
 library(plyr)
 eb = '4'
-subj = 'subj-06'
+subj = 'subj-07'
 cond = 'cond-a'
 cue = 'cp'  # cp/cu = predictive/unpredictive
 block = 3
