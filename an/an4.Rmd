@@ -22,7 +22,6 @@ code.r{
 }
 </style>
 
-
 # Data input and parsing
 ```{r set-options, message=F}
 options(width=100)
@@ -85,6 +84,15 @@ ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
 plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
 ```
 
+## Analyses
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * targ_soa + (1|subj), data = ss_corr)))
+```
+
+```{r}
+print(anova(lmer(RT ~ cue_valid * Cond * targ_soa + (1|subj), data = ss_corr)))
+```
 
 # Eye blinks
 
@@ -135,7 +143,10 @@ plot(p)
 ```
 
 ```{r}
-print(lmerfn(lmer(RT ~ cue_valid * Cond * targ_soa * blat + block + (1|subj), data = dsa)))
 m = lmer(RT ~ cue_valid * Cond * targ_soa * blat + block + (1|subj), data = dsa)
-anova(m)
+print(lmerfn(m))
+```
+
+```{r}
+print(anova(m))
 ```
