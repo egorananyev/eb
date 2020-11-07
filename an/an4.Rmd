@@ -33,7 +33,7 @@ library(lme4)
 library(lmerTest)
 library(reshape)
 library(R.utils)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
@@ -86,12 +86,22 @@ plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, '
 
 ## Analyses
 
+It makes no sense to center cue validity.
+
+A potential rationale for centering validity is to look at the rest of the effects with respect to a "neutral" cue. But this goes against the usefulness of centering: it is meant to focus the effects on *meaningful* levels of a variable, whereas no neutral cue exists in the data. A more logical "reference" level for the valid cue is the invalid one.
+
+For the CTOA, instead of centering on the mean, I went for centering on the shortest asynchrony, and scaling the data such that a unit of 1 is the step from the shortest to longest asynchrony. This way, an effect of CTOA would indicate the change in RT when the asynchrony changes from shortest to longest.
+
 ```{r}
-print(lmerfn(lmer(RT ~ cue_valid * Cond * targ_soa + (1|subj), data = ss_corr)))
+ds_rt = ss_corr
+ds_rt$ctoa_0 = (ds_rt$targ_soa - 0.3) * 5  # [0.3, 0.4, 0.5] -> [0, 0.1, 0.2] -> [0, 0.5, 1]
+# ds_rt$ctoa_c = (ds_rt$targ_soa - 0.4) * 10  # to turn into [-1, 0, 1]
+# ds_rt$cue_valid_c = ds_ans$cue_valid * 2 - 1  # to turn [0, 1] into [-1, 1]
 ```
 
 ```{r}
-print(anova(lmer(RT ~ cue_valid * Cond * targ_soa + (1|subj), data = ss_corr)))
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + (1|subj), data = ds_rt)))
+print(anova(lmer(RT ~ cue_valid * Cond * ctoa_0 + (1|subj), data = ds_rt)))
 ```
 
 # Eye blinks
@@ -106,6 +116,7 @@ bdur_sumss = ddply(dsa, .(Cond, subj), summarize,
                         bdur_sd = sd(bdur))
 dsa = merge(dsa, bdur_sumss, by=c('Cond', 'subj'))
 dsa$bdur_z = with(dsa, (bdur - bdur_ave) / bdur_sd)
+dsa$ctoa_0 = (dsa$targ_soa - 0.3) * 5  # [0.3, 0.4, 0.5] -> [0, 0.1, 0.2] -> [0, 0.5, 1]
 ```
 
 ```{r, fig.width=5.5, fig.height=2.5}
@@ -118,7 +129,7 @@ plot(p)
 ```
 
 ```{r}
-print(lmerfn(lmer(RT ~ cue_valid * Cond * targ_soa * bdur + block + (1|subj), data = dsa)))
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 * bdur + block + (1|subj), data = dsa)))
 ```
 
 
@@ -143,7 +154,7 @@ plot(p)
 ```
 
 ```{r}
-m = lmer(RT ~ cue_valid * Cond * targ_soa * blat + block + (1|subj), data = dsa)
+m = lmer(RT ~ cue_valid * Cond * ctoa_0 * blat + block + (1|subj), data = dsa)
 print(lmerfn(m))
 ```
 

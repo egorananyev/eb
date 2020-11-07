@@ -25,7 +25,7 @@ debug = F
 library(R.utils)
 library(plyr)
 library(dplyr)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/Projects/eb/'
   prog_dir = 'C:/Users/egora/Prog/'
