@@ -100,8 +100,18 @@ ds_rt$ctoa_0 = (ds_rt$targ_soa - 0.3) * 5  # [0.3, 0.4, 0.5] -> [0, 0.1, 0.2] ->
 ```
 
 ```{r}
-print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + (1|subj), data = ds_rt)))
-print(anova(lmer(RT ~ cue_valid * Cond * ctoa_0 + (1|subj), data = ds_rt)))
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + block + (1|subj), data = ds_rt)))
+# print(anova(lmer(RT ~ cue_valid * Cond * ctoa_0 + (1|subj), data = ds_rt)))
+```
+
+The analysis reveals that the RTs for the AB condition are slower than in the no-blink condition (#2). These are only somewhat slower for the prompted condition (#3), with the effect being barely significant.
+
+However, there is no significant difference of cue validity: having a valid cue does speed up the reaction times (#1), but this is unaffected by the blink condition.
+
+```{r}
+ds_rt_pb = ds_rt 
+ds_rt_pb$Cond = factor(ds_rt_pb$Cond, c('Prompted','Artificial','NoBlink'))
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + block + (1|subj), data = ds_rt_pb)))
 ```
 
 # Eye blinks
@@ -116,6 +126,7 @@ bdur_sumss = ddply(dsa, .(Cond, subj), summarize,
                         bdur_sd = sd(bdur))
 dsa = merge(dsa, bdur_sumss, by=c('Cond', 'subj'))
 dsa$bdur_z = with(dsa, (bdur - bdur_ave) / bdur_sd)
+dsa$bdur_c = with(dsa, (bdur - mean(bdur)))
 dsa$ctoa_0 = (dsa$targ_soa - 0.3) * 5  # [0.3, 0.4, 0.5] -> [0, 0.1, 0.2] -> [0, 0.5, 1]
 ```
 
@@ -129,8 +140,18 @@ plot(p)
 ```
 
 ```{r}
-print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 * bdur + block + (1|subj), data = dsa)))
+# print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 * bdur + block + (1|subj), data = dsa)))
 ```
+
+Note: Important to center blink duration: otherwise, the model picks up the effects of asynchronies (#3,8) at meaningless blink duration of zero. Trying with a centered, non-normalized blink duration:
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 * bdur_c + block + (1|subj), data = dsa)))
+```
+
+This model picks up the cue validity effect (#1), but this effect does not interact with the blink condition effects.
+
+Another (barely significant) effect is the interaction between the asynchrony and blink durations: longer blink durations increase RT, but only to later targets (#11). In other words, for later targets, an increase of 100 ms in blink durations leads to ~16.7 ms slowdown in RT.
 
 
 ## Blink latencies
@@ -141,6 +162,7 @@ blat_sumss = ddply(dsa, .(Cond, subj), summarize,
                         blat_ave = mean(blat),
                         blat_sd = sd(blat))
 dsa = merge(dsa, blat_sumss, by=c('Cond', 'subj'))
+dsa$blat_c = with(dsa, (blat - mean(blat)))
 dsa$blat_z = with(dsa, (blat - blat_ave) / blat_sd)
 ```
 
@@ -154,10 +176,11 @@ plot(p)
 ```
 
 ```{r}
-m = lmer(RT ~ cue_valid * Cond * ctoa_0 * blat + block + (1|subj), data = dsa)
-print(lmerfn(m))
+lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 * blat_c + block + (1|subj), data = dsa))
 ```
 
-```{r}
-print(anova(m))
-```
+This model picks up the cue validity effect (#1).
+
+Oddly, it also says that, when both artificial and real blink latencies are centered, the real blinks are associated with slightly longer reaction times. This suggests that, in the the simple model, the mean of blink latencies is not the same as here. Might have something to do with the fact that, here, the no-blink condition is not analyzed.
+
+Unlike with blink durations, blink latencies are generally associated with a robust effect on RT: later blinks are associated with much slower reaction times (#4). For later targets, this effect is significantly reduced (#11).
