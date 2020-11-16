@@ -33,7 +33,7 @@ library(lme4)
 library(lmerTest)
 library(reshape)
 library(R.utils)
-computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
@@ -115,6 +115,14 @@ print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + block + (1|subj), data = ds_r
 ```
 
 # Eye blinks
+
+There are several events taking place: blink cue (cue_delay), spatial cue (scue_delay), blink onset and offset (leading to blink duration), target appearance (CTOA), and subject response (RT). These also yield the blink onset relative to the blink cue (blink latency) and relative to the spatial cue (CBOA = cue-blink onset asynchrony, which may be negative).
+
+Longer RTs are associated with longer blinks, but only for later targets. This may hint at the effects of fatigue.
+
+Longer RTs are also associated with /later/ blinks, although the effect is reduced for later targets. Blink latency may be indicative of the individual differences in reaction times. After all, RTs should be similar to targets and blink cues.
+
+Neither effect seems to have anything to do with spatial cue validity: although all analyses pick up the cue validity effect, none of the blink conditions seem to interact with it. That means that blinking does not seem to affect spatial attentional allocation based on an audio spatial cue.
 
 
 ## Blink durations
