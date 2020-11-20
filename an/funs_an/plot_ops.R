@@ -42,10 +42,10 @@ plot_themefy = function(p_in){
 }
 
 # Plotting box plot data across CTOAs
-plot_box_ctoa = function(sss, y_lab, plot_title, out, x_str='ctoa_lowbound', eb='eb', l=T){
+plot_box_ctoa = function(sss, x_lab, y_lab, plot_title, out, x_str='ctoa_lowbound', eb='eb', l=T){
   sss$x = sss[,x_str]  # this allows plotting non-binned CTOAs; x_str needs to change to a diff var
   p = ggplot(data=sss, aes(x=factor(x), y=RT, fill=Cond)) + 
-      geom_boxplot() + xlab('Cue-to-Target Asynchrony (ms)') + ylab(y_lab) +
+      geom_boxplot() + xlab(x_lab) + ylab(y_lab) +
       theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5)) +
       ggtitle(plot_title) + guides(alpha=F)
   if(eb == 'eb'){

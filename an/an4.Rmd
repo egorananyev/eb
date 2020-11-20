@@ -33,7 +33,7 @@ library(lme4)
 library(lmerTest)
 library(reshape)
 library(R.utils)
-computer = 'toshi'  # 'shocky', 'station3', 'acer' are all possible options
+computer = 'acer'  # 'shocky', 'station3', 'acer' are all possible options
 if(computer=='acer'){
   cloud_dir = 'C:/gd/'
   prog_dir = 'C:/Users/egora/Prog/'
@@ -60,6 +60,19 @@ ds$CondFull = factor(ds$CondFull, c('No Blink','Artificial Blink','Prompted Blin
 cue_valid_name = 'Cue Validity'
 ```
 
+Condition order variable:
+
+```{r}
+sumss_cond = ddply(ds[ds$block_order==1,], .(subj, Cond, block_time), summarise, cond_order = 0)
+sumss_cond = sumss_cond %>% group_by(subj) %>% mutate(cond_order=order(order(block_time)))
+# ... I've no idea why I need to double-wrap order(), but I have to to make it work right.
+head(sumss_cond, 12)
+# since we're not merging by block time, dropping it first:
+sumss_cond = subset(sumss_cond, select=-c(block_time))
+ds = merge(ds, sumss_cond, by=c('subj', 'Cond'))
+dsa = merge(dsa, sumss_cond, by=c('subj', 'Cond'))
+```
+
 
 # Cueing
 
@@ -69,19 +82,22 @@ cue_valid_name = 'Cue Validity'
 ss_corr = ds[ds$corr_resp==1, ]
 ctoa_valid = ddply(ss_corr[ss_corr$CueValid=='Valid',], .(targ_soa, Cond, subj), summarise,
                    RT=median(RT))
-plot_box_ctoa(ctoa_valid, 'RT Valid (ms)', 'RT on Valid Trials', out, 'targ_soa', eb='eb3')
+plot_box_ctoa(ctoa_valid, 'Cue-to-Target Asynchrony (ms)', 'RT Valid (ms)',
+              'RT on Valid Trials', out, 'targ_soa', eb='eb3')
 ```
 
 ```{r, fig.width=8.5, fig.height=2.5, results="hide"}
 ctoa_invalid = ddply(ss_corr[ss_corr$CueValid=='Invalid',], .(targ_soa, Cond, subj), summarise, 
                   RT=median(RT))
-plot_box_ctoa(ctoa_invalid, 'RT Invalid (ms)', 'RT on Invalid Trials', out, 'targ_soa', eb='eb3')
+plot_box_ctoa(ctoa_invalid, 'Cue-to-Target Asynchrony (ms)', 'RT Invalid (ms)',
+              'RT on Invalid Trials', out, 'targ_soa', eb='eb3')
 ```
 
 ```{r, fig.width=8.5, fig.height=2.5, results="hide"}
 ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('targ_soa', 'Cond', 'subj'))
 ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
-plot_box_ctoa(ctoa_adv, 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
+plot_box_ctoa(ctoa_adv, 'Cue-to-Target Asynchrony (ms)', 'RT Invalid - Valid (ms)',
+              'RT Cueing Advantage', out, 'targ_soa', eb='eb3')
 ```
 
 ## Analyses
@@ -112,6 +128,58 @@ However, there is no significant difference of cue validity: having a valid cue 
 ds_rt_pb = ds_rt 
 ds_rt_pb$Cond = factor(ds_rt_pb$Cond, c('Prompted','Artificial','NoBlink'))
 print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + block + (1|subj), data = ds_rt_pb)))
+```
+
+## Afo/ cond & block order
+
+Overall, nothing particularly interesting about the effects of condition order: predictably, the cueing improves with time the participant is performing the task.
+
+Looking at the effect of the condition order only:
+
+```{r, fig.width=8.5, fig.height=2.5, results="hide"}
+ctoa_valid = ddply(ss_corr[ss_corr$CueValid=='Valid',], .(cond_order, Cond, subj),
+                   summarise, RT=median(RT))
+ctoa_invalid = ddply(ss_corr[ss_corr$CueValid=='Invalid',], .(cond_order, Cond, subj),
+                     summarise, RT=median(RT))
+ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('cond_order', 'Cond', 'subj'))
+ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
+plot_box_ctoa(ctoa_adv, 'Condition Order', 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out,
+              'cond_order', eb='eb3')
+```
+Really /does/ look like there's a strong effect of condition order.
+
+```{r, fig.width=8.5, fig.height=2.5, results="hide"}
+ctoa_valid = ddply(ss_corr[ss_corr$CueValid=='Valid',], .(block_order, Cond, subj),
+                   summarise, RT=median(RT))
+ctoa_invalid = ddply(ss_corr[ss_corr$CueValid=='Invalid',], .(block_order, Cond, subj),
+                     summarise, RT=median(RT))
+ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('block_order', 'Cond', 'subj'))
+ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
+plot_box_ctoa(ctoa_adv, 'Block Order', 'RT Invalid - Valid (ms)', 'RT Cueing Advantage', out,
+              'block_order', eb='eb3')
+```
+Not so much of an effect of the block order, it seems.
+
+Looking at both blocks and conditions:
+
+```{r, fig.width=8.5, fig.height=2.5, results="hide"}
+ctoa_valid = ddply(ss_corr[ss_corr$CueValid=='Valid',], .(block_order, cond_order, Cond, subj),
+                   summarise, RT=median(RT))
+ctoa_invalid = ddply(ss_corr[ss_corr$CueValid=='Invalid',], .(block_order, cond_order, Cond, subj),
+                     summarise, RT=median(RT))
+ctoa_adv = merge(ctoa_valid, ctoa_invalid, by=c('block_order', 'cond_order', 'Cond', 'subj'))
+ctoa_adv$RT = ctoa_adv$RT.y - ctoa_adv$RT.x  # Invalid - Valid RT
+p = ggplot(data=ctoa_adv, aes(x=factor(block_order), y=RT, fill=Cond)) + 
+    geom_boxplot() + xlab('Condition x Block Order') + ylab('RT Invalid - Valid (ms)') +
+    facet_wrap(~cond_order) +
+    theme(panel.grid.minor=element_blank(), plot.title = element_text(hjust = 0.5)) +
+    ggtitle('RT Cueing Advantage') + guides(alpha=F)
+p = plot_themefy(p)
+print(p)
+```
+
+```{r}
+print(lmerfn(lmer(RT ~ cue_valid * Cond * ctoa_0 + cond_order + block + (1|subj), data = ds_rt)))
 ```
 
 # Eye blinks
